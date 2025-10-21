@@ -1,3 +1,15 @@
+.DS_Store
+dist/
+out/
+.cache/
+coverage/
+bank_statement_results/
+_incoming/
+bff/**/data/
+*.key
+*.pem
+
+
 # Logs
 logs
 *.log
