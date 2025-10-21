@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>V2 Card Editor</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="https://uicdn.toast.com/tui-image-editor/latest/tui-image-editor.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="left">
+        <strong>V2 Card Editor</strong>
+        <small class="muted">v0.09 unified</small>
+      </div>
+      <div class="right">
+        <label>Base URL:
+          <input id="baseUrl" type="text" placeholder="http://localhost:8787" />
+        </label>
+        <button id="btnFindLoad">Find & Load</button>
+        <span id="status" class="status"></span>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="pane list-pane">
+        <div class="pane-head">
+          <span>Cards</span>
+          <div class="tools">
+            <button id="btnReload">Reload</button>
+            <button id="btnNew">New</button>
+          </div>
+        </div>
+        <ul id="cards" class="cards"></ul>
+      </section>
+
+      <section class="pane editor-pane">
+        <div class="pane-head">
+          <span>Editor</span>
+          <div class="tools">
+            <button id="btnImport">Import</button>
+            <button id="btnExport">Export</button>
+            <button id="btnSimpleEdit">Simple Edit</button>
+            <button id="btnSave" class="primary">Save</button>
+          </div>
+        </div>
+
+        <div class="drop-wrap">
+          <div id="dropzone" class="dropzone">
+            <div>
+              <strong>Drop PNG / JSON / .sAtd here</strong>
+              <div class="muted">or click to choose a file</div>
+            </div>
+          </div>
+          <div class="preview">
+            <img id="card_preview" alt="preview" />
+            <pre id="prompt_preview" class="mono"></pre>
+          </div>
+        </div>
+
+        <div class="form">
+          <div class="row">
+            <label>ID</label>
+            <input id="card_id" type="text" placeholder="v2_xxx" />
+          </div>
+          <div class="row">
+            <label>Name</label>
+            <input id="card_name" type="text" placeholder="Sample Card" />
+          </div>
+          <div class="row">
+            <label>Icon</label>
+            <input id="card_icon" type="text" placeholder="🃏 or emoji" />
+          </div>
+          <div class="row">
+            <label>First Message (first_mes)</label>
+            <textarea id="card_prompt" rows="6" placeholder="Initial greeting shown in chat"></textarea>
+          </div>
+          <div class="row">
+            <label>Behavior (description / system_prompt / behavior)</label>
+            <textarea id="card_behavior" rows="8" placeholder="Behavior / system instructions"></textarea>
+          </div>
+          <div class="row">
+            <label>Links (JSON array)</label>
+            <textarea id="card_links" rows="4" class="mono" placeholder='[{"title":"Lab notes","url":"#"}]'></textarea>
+          </div>
+
+          <details>
+            <summary>Advanced (chara_card_v3 fields)</summary>
+            <div class="row">
+              <label>Description</label>
+              <textarea id="card_description" rows="6" placeholder="Long description"></textarea>
+            </div>
+            <div class="row">
+              <label>Scenario</label>
+              <textarea id="card_scenario" rows="4" placeholder="Scenario / context"></textarea>
+            </div>
+            <div class="row">
+              <label>First Message (raw)</label>
+              <textarea id="card_firstmes" rows="3" placeholder="first_mes"></textarea>
+            </div>
+            <div class="row two">
+              <div>
+                <label>Tags (comma separated)</label>
+                <input id="card_tags" type="text" placeholder="tag1, tag2" />
+              </div>
+              <div>
+                <label>Talkativeness (0-1)</label>
+                <input id="card_talk" type="number" min="0" max="1" step="0.1" value="0.5" />
+                <label class="inline"><input id="card_fav" type="checkbox" /> Fav</label>
+              </div>
+            </div>
+            <div class="row">
+              <label style="display:flex;justify-content:space-between;align-items:center">Character Book <button id="btnAddBook" type="button">+ Add Entry</button></label>
+              <div id="book_entries" class="book-entries"></div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Raw JSON</summary>
+            <textarea id="card_raw" rows="10" class="mono" placeholder="{\n  \"id\": \"v2_1\", ...\n}"></textarea>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <input id="fileImport" type="file" accept="application/json,.json,.sAtd,image/png" style="display:none" />
+
+    <div id="imgEditorModal" class="modal" style="display:none">
+      <div class="modal-body">
+        <div class="modal-head">
+          <strong>Image Editor</strong>
+          <div class="spacer"></div>
+          <button id="btnImgCancel" class="btn">Cancel</button>
+          <button id="btnImgApply" class="btn primary">Apply</button>
+        </div>
+        <div id="imgEditor" style="height:70vh;"></div>
+      </div>
+    </div>
+
+    <div id="cropModal" class="modal" style="display:none">
+      <div class="modal-body">
+        <div class="modal-head">
+          <strong>Simple Image Editor (400x600)</strong>
+          <div class="spacer"></div>
+          <button id="btnCropCancel" class="btn">Cancel</button>
+          <button id="btnCropApply" class="btn primary">Apply</button>
+        </div>
+        <div class="panel-body" style="height:70vh;overflow:auto;background:#111;display:flex;align-items:center;justify-content:center">
+          <img id="cropImg" style="max-width:100%;display:block" />
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+    <script src="https://uicdn.toast.com/tui-image-editor/latest/fabric.min.js"></script>
+    <script src="https://uicdn.toast.com/tui-image-editor/latest/tui-image-editor.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
+    <script src="./editor.js"></script>
+  </body>
+  </html>

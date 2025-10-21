@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IZAKAYA UI Template</title>
+    <link rel="stylesheet" href="./kit.css" />
+    <link id="theme-link" rel="stylesheet" href="./themes/dark.css" />
+  </head>
+  <body>
+    <header class="ui-header">
+      <div class="brand">IZAKAYA UI</div>
+      <div class="grow"></div>
+      <div class="actions">
+        <select id="themePick" class="btn">
+          <option value="dark">Dark</option>
+          <option value="cyberpunk">Cyberpunk</option>
+          <option value="izakaya">IZAKAYA</option>
+        </select>
+      </div>
+    </header>
+
+    <div class="ui-shell">
+      <aside class="ui-side">
+        <nav class="nav">
+          <a class="nav-item active">Dashboard</a>
+          <a class="nav-item">Cards</a>
+          <a class="nav-item">Settings</a>
+        </nav>
+      </aside>
+      <main class="ui-main">
+        <div class="toolbar">
+          <div class="title">Example Screen</div>
+          <div class="tools">
+            <button class="btn" id="btnLoad">Load</button>
+            <button class="btn primary" id="btnSave">Save</button>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <section class="panel">
+            <div class="panel-head">Dropzone</div>
+            <div class="panel-body grid2">
+              <div id="drop" class="dropzone">
+                <div>
+                  <strong>Drop files here</strong>
+                  <div class="muted">or click to choose</div>
+                </div>
+              </div>
+              <div class="preview">
+                <img id="prevImg" />
+                <pre id="prevTxt" class="mono"></pre>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">Form</div>
+            <div class="panel-body form">
+              <label>Title<input type="text" class="input" placeholder="Title"/></label>
+              <label>Description<textarea rows="5" class="textarea" placeholder="Description"></textarea></label>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <div id="toasts" class="toasts"></div>
+
+    <input id="picker" type="file" style="display:none" />
+    <script src="./kit.js"></script>
+  </body>
+  </html>

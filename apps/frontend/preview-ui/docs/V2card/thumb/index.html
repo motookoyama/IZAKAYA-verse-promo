@@ -1,0 +1,758 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>カラフルIZAKAYA V2カード プレイヤー</title>
+<style>
+body {
+  font-family: 'Noto Sans JP', sans-serif;
+  margin: 0;
+  padding: 0;
+  background: #9ACD32;  /* 黄緑色のバックグラウンド */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.header {
+  background-color: #FF4500;  /* 赤いヘッダー */
+  color: white;
+  padding: 1rem;
+  text-align: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.izakaya-logo {
+  font-size: 24px;
+  font-weight: bold;
+  color: #FF4500;
+  text-align: center;
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.credit {
+  font-size: 12px;
+  font-weight: normal;
+  margin-top: 0.5rem;
+}
+
+.main-container {
+  display: flex;
+  flex: 1;
+  padding: 1rem;
+  max-height: calc(100vh - 80px);  /* ヘッダーの高さを考慮 */
+  overflow: hidden;
+}
+
+.left-panel {
+  flex: 7;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chat-container {
+  flex: 1;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 15px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-bottom: 1rem;
+  max-height: 60vh;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.chat-input {
+  display: flex;
+  padding: 1rem;
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+.chat-input textarea {
+  flex: 1;
+  padding: 0.5rem;
+  border: 2px solid #FF4500;  /* 赤いボーダー */
+  border-radius: 15px;
+  outline: none;
+  resize: vertical;
+  min-height: 50px;
+  max-height: 150px;
+}
+
+.chat-input button {
+  margin-left: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: #FF4500;  /* 赤いボタン */
+  color: white;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  align-self: flex-end;
+}
+
+.chat-input button:hover {
+  background-color: #FF6347;
+}
+
+.dropzones-container {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  overflow-y: auto;
+  max-height: 40vh;
+}
+
+.dropzone {
+  flex: 1;
+  min-width: 200px;
+  margin: 0.5rem;
+  padding: 1rem;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 15px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.dropzone textarea {
+  width: 100%;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  border: 2px solid #FF4500;  /* 赤いボーダー */
+  border-radius: 15px;
+  outline: none;
+  resize: vertical;
+  min-height: 50px;
+}
+
+.dropzone input[type="file"] {
+  display: none;
+}
+
+.dropzone label {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background-color: #FF4500;  /* 赤いラベル */
+  color: white;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.dropzone label:hover {
+  background-color: #FF6347;
+}
+
+.right-panel {
+  flex: 3;
+  margin-left: 1rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.info-container {
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 15px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  overflow-y: auto;
+  max-height: 30vh;
+}
+
+.character-info, .inventory, .game-info {
+  margin-bottom: 1rem;
+}
+
+.radio-container {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 1rem;
+}
+
+.radio-button {
+  display: none;
+}
+
+.radio-label {
+  padding: 0.5rem 1rem;
+  background-color: #FFE4B5;
+  color: #FF4500;  /* 赤いテキスト */
+  border-radius: 25px;
+  cursor: pointer;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.radio-button:checked + .radio-label {
+  background-color: #FF4500;  /* 赤い背景 */
+  color: white;
+}
+
+.blog-link {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background-color: #FF4500;  /* 赤いリンク */
+  color: white;
+  text-decoration: none;
+  border-radius: 25px;
+  transition: background-color 0.3s;
+}
+
+.blog-link:hover {
+  background-color: #FF6347;
+}
+
+.character-thumbnail {
+  width: 80px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 0.5rem;
+}
+
+.character-selection {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.character-option {
+  text-align: center;
+  cursor: pointer;
+  flex: 0 0 auto;
+  margin: 0 0.5rem;
+}
+
+.character-option.active {
+  border: 2px solid #FF4500;  /* 赤いボーダー */
+  border-radius: 10px;
+  padding: 5px;
+}
+
+.user-message {
+  color: #FF0000;
+}
+
+/* スクロールバーのスタイル */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #FF4500;  /* 赤いスクロールバー */
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #FF6347;
+}
+
+</style>
+</head>
+<body>
+  <div class="main-container">
+    <div class="left-panel">
+      <div class="chat-container">
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input">
+          <textarea id="userInput" placeholder="メッセージを入力..." rows="3"></textarea>
+          <button onclick="sendMessage()">送信</button>
+        </div>
+      </div>
+      <div class="character-selection" id="characterSelection"></div>
+      <div class="dropzones-container">
+        <div class="dropzone" id="characterDropzone1">
+          <h3>キャラクター 1</h3>
+          <textarea id="characterText1" placeholder="キャラクター調整のためのプロンプトを入力" rows="3"></textarea>
+          <input type="file" id="characterFile1" accept="image/png">
+          <label for="characterFile1">PNGファイルを選択</label>
+        </div>
+        <div class="dropzone" id="characterDropzone2">
+          <h3>キャラクター 2</h3>
+          <textarea id="characterText2" placeholder="キャラクター調整のためのプロンプトを入力" rows="3"></textarea>
+          <input type="file" id="characterFile2" accept="image/png">
+          <label for="characterFile2">PNGファイルを選択</label>
+        </div>
+        <div class="dropzone" id="characterDropzone3">
+          <h3>キャラクター 3</h3>
+          <textarea id="characterText3" placeholder="キャラクター調整のためのプロンプトを入力" rows="3"></textarea>
+          <input type="file" id="characterFile3" accept="image/png">
+          <label for="characterFile3">PNGファイルを選択</label>
+        </div>
+        <div class="dropzone" id="worldDropzone">
+          <h3>ワールド</h3>
+          <textarea id="worldText" placeholder="ワールド調整のためのプロンプトを入力" rows="3"></textarea>
+          <input type="file" id="worldFile" accept="image/png">
+          <label for="worldFile">PNGファイルを選択</label>
+        </div>
+        <div class="dropzone" id="modDropzone">
+          <h3>MOD</h3>
+          <textarea id="modText" placeholder="MOD調整のためのプロンプトを入力" rows="3"></textarea>
+          <input type="file" id="modFile" accept="image/png">
+          <label for="modFile">PNGファイルを選択</label>
+        </div>
+      </div>
+    </div>
+    <div class="right-panel">
+      <div class="info-container character-info">
+        <h3>キャラクター情報</h3>
+        <div id="characterInfo"></div>
+      </div>
+      <div class="info-container inventory">
+        <h3>インベントリ</h3>
+        <div id="inventoryInfo"></div>
+      </div>
+      <div class="info-container game-info">
+        <h3>ゲーム情報</h3>
+        <div id="gameInfo"></div>
+      </div>
+      <div class="radio-container">
+        <input type="radio" id="beginnerMode" name="difficulty" value="beginner" class="radio-button" checked>
+        <label for="beginnerMode" class="radio-label">初心者</label>
+        <input type="radio" id="intermediateMode" name="difficulty" value="intermediate" class="radio-button">
+        <label for="intermediateMode" class="radio-label">中級者</label>
+        <input type="radio" id="advancedMode" name="difficulty" value="advanced" class="radio-button">
+        <label for="advancedMode" class="radio-label">上級者</label>
+      </div>
+      <a href="#" class="blog-link" id="characterBlog" onclick="generateBlogPost()">キャラクターのブログを読む</a>
+      <div class="izakaya-logo">
+        IZAKAYA
+        <div class="credit">V2Card SillyTavern互換 ©︎nohonx</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const GEMINI_API_KEY = 'AIzaSyCUt27PNSqCPqsDMUiZqBX6QsaHvGKnuL4';
+
+async function generateGeminiResponse(prompt) {
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }]
+      })
+    });
+
+    const data = await response.json();
+    
+    if (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) {
+      return data.candidates[0].content.parts[0].text;
+    } else {
+      console.error('Unexpected response structure from Gemini API:', data);
+      return "申し訳ありません。応答の生成中にエラーが発生しました。";
+    }
+  } catch (error) {
+    console.error('Error generating Gemini response:', error);
+    return "申し訳ありません。応答の生成中にエラーが発生しました。";
+  }
+}
+
+let characterData = [null, null, null];
+let worldData = null;
+let modData = null;
+let currentDifficulty = 'beginner';
+let activeCharacterIndex = 0;
+
+function decodeBase64(str) {
+  try {
+    return decodeURIComponent(escape(atob(str)));
+  } catch (e) {
+    console.error('ベース64文字列のデコードに失敗しました:', e);
+    return null;
+  }
+}
+
+function readPngMetadata(file, type, index) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const arrayBuffer = e.target.result;
+    const view = new DataView(arrayBuffer);
+    let offset = 8;
+
+    while (offset < view.byteLength) {
+      const length = view.getUint32(offset);
+      offset += 4;
+      const chunkType = String.fromCharCode(
+        view.getUint8(offset),
+        view.getUint8(offset + 1),
+        view.getUint8(offset + 2),
+        view.getUint8(offset + 3)
+      );
+      offset += 4;
+
+      if (chunkType === 'tEXt') {
+        const textData = new TextDecoder('utf-8').decode(new Uint8Array(arrayBuffer, offset, length));
+        const [key, value] = textData.split('\0');
+        if (key === 'prompt' || key === 'chara') {  
+          try {
+            const decodedValue = decodeBase64(value);
+            if (decodedValue) {
+              const parsedData = JSON.parse(decodedValue);
+              if (type === 'character') {
+                processCardData(parsedData, type, index);
+              } else {
+                processCardData(parsedData, type);
+              }
+              createThumbnail(file, type, index);
+            } else {
+              throw new Error('ベース64文字列のデコードに失敗しました');
+            }
+          } catch (error) {
+            console.error('PNGメタデータの処理中にエラーが発生しました:', error);
+            alert(`PNG メタデータの処理中にエラーが発生しました: ${error.message}`);
+          }
+          return;
+        }
+      }
+
+      offset += length + 4;
+    }
+
+    alert('プロンプトデータが見つかりませんでした。');
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function setupDropzone(id, textId, fileId, index) {
+  const dropzone = document.getElementById(id);
+  const textArea = document.getElementById(textId);
+  const fileInput = document.getElementById(fileId);
+
+  dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      fileInput.files = files;
+      handleFileInput(fileInput, index);
+    }
+  });
+
+  textArea.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.ctrlKey) {
+      e.preventDefault();
+      handleTextInput(textArea, index);
+    }
+  });
+
+  fileInput.addEventListener('change', () => {
+    handleFileInput(fileInput, index);
+  });
+}
+
+function handleTextInput(textArea, index) {
+  const type = textArea.id.includes('character') ? 'character' : textArea.id.replace('Text', '');
+  const message = textArea.value.trim();
+  if (message) {
+    if (type === 'character') {
+      processCardData({ text: message }, type, index);
+    } else {
+      processCardData({ text: message }, type);
+    }
+    displayMessage('システム', `${type}の調整プロンプト: ${message}`);
+    textArea.value = '';
+  }
+}
+
+function handleFileInput(input, index) {
+  const file = input.files[0];
+  const type = input.id.includes('character') ? 'character' : input.id.replace('File', '');
+  if (file.type === 'image/png') {
+    readPngMetadata(file, type, index);
+  } else {
+    alert('サポートされているファイル形式は PNG のみです。');
+  }
+}
+
+function createThumbnail(file, type, index) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = 80;
+      canvas.height = 120;
+      ctx.drawImage(img, 0, 0, 80, 120);
+      const thumbnail = canvas.toDataURL('image/png');
+      if (type === 'character') {
+        characterData[index].thumbnail = thumbnail;
+        updateCharacterSelection();
+      }
+    }
+    img.src = e.target.result;
+  }
+  reader.readAsDataURL(file);
+}
+
+function processCardData(data, type, index) {
+  switch (type) {
+    case 'character':
+      characterData[index] = data;
+      updateCharacterInfo(index);
+      break;
+    case 'world':
+      worldData = data;
+      updateWorldInfo();
+      break;
+    case 'mod':
+      modData = data;
+      updateModInfo();
+      break;
+  }
+  updateGameState();
+}
+
+function updateCharacterInfo(index) {
+  if (characterData[index]) {
+    const characterInfo = document.getElementById('characterInfo');
+    const description = characterData[index].description || '説明はありません';
+    const shortenedDescription = description.length > 150 ? description.substring(0, 147) + '...' : description;
+    characterInfo.innerHTML = `
+      <p>名前: ${characterData[index].name || '不明'}</p>
+      <p>説明: ${shortenedDescription}</p>
+    `;
+    updateInventory(characterData[index].inventory || []);
+    
+    if (!characterData[index].rpStarted) {
+      characterData[index].rpStarted = true;
+      const introMessage = `こんにちは！私は${characterData[index].name}です。${shortenedDescription} よろしくお願いします！`;
+      displayMessage(characterData[index].name, introMessage);
+    }
+    updateCharacterSelection();
+  }
+}
+
+function updateCharacterSelection() {
+  const characterSelection = document.getElementById('characterSelection');
+  characterSelection.innerHTML = '';
+  characterData.forEach((character, index) => {
+    if (character) {
+      const characterOption = document.createElement('div');
+      characterOption.classList.add('character-option');
+      if (index === activeCharacterIndex) {
+        characterOption.classList.add('active');
+      }
+      characterOption.innerHTML = `
+        <img src="${character.thumbnail}" alt="${character.name}" class="character-thumbnail">
+        <p>${character.name}</p>
+      `;
+      characterOption.onclick = () => setActiveCharacter(index);
+      characterSelection.appendChild(characterOption);
+    }
+  });
+}
+
+function setActiveCharacter(index) {
+  activeCharacterIndex = index;
+  updateCharacterSelection();
+  updateCharacterInfo(index);
+}
+
+function updateWorldInfo() {
+  if (worldData) {
+    const gameInfo = document.getElementById('gameInfo');
+    gameInfo.innerHTML = `
+      <p>ワールド: ${worldData.name || '不明'}</p>
+      <p>説明: ${worldData.description || '説明はありません'}</p>
+    `;
+  }
+}
+
+function updateModInfo() {
+  if (modData) {
+    const gameInfo = document.getElementById('gameInfo');
+    gameInfo.innerHTML += `
+      <p>MOD: ${modData.name || '不明'}</p>
+      <p>説明: ${modData.description || '説明はありません'}</p>
+    `;
+  }
+}
+
+function updateInventory(items) {
+  const inventoryInfo = document.getElementById('inventoryInfo');
+  inventoryInfo.innerHTML = items.length > 0
+    ? `<ul>${items.map(item => `<li>${item}</li>`).join('')}</ul>`
+    : '<p>インベントリは空です</p>';
+}
+
+function updateGameState() {
+  const gameState = {
+    characters: characterData,
+    world: worldData,
+    mod: modData,
+    difficulty: currentDifficulty
+  };
+  console.log('ゲームの状態が更新されました:', gameState);
+}
+
+function changeDifficulty() {
+  currentDifficulty = document.querySelector('input[name="difficulty"]:checked').value;
+  updateGameState();
+}
+
+async function sendMessage() {
+  const userInput = document.getElementById('userInput');
+  const message = userInput.value.trim();
+  if (message) {
+    displayMessage('あなた', message);
+    await processMessage(message);
+    userInput.value = '';
+  }
+}
+
+async function processMessage(message) {
+  const activeCharacter = characterData[activeCharacterIndex];
+  if (activeCharacter && activeCharacter.name) {
+    if (message.startsWith('/')) {
+      handleCharacterCommand(message);
+    } else {
+      try {
+        const response = await generateCharacterResponse(message);
+        if (response) {
+          displayMessage(activeCharacter.name, response);
+        } else {
+          displayMessage('システム', '応答の生成中にエラーが発生しました。');
+        }
+      } catch (error) {
+        console.error('Error processing message:', error);
+        displayMessage('システム', 'メッセージの処理中にエラーが発生しました。');
+      }
+    }
+  } else {
+    let botResponse = 'キャラクターがまだ設定されていません。まずキャラクターを設定してください。';
+    displayMessage('システム', botResponse);
+  }
+}
+
+function handleCharacterCommand(command) {
+  const [cmd, ...args] = command.slice(1).split(' ');
+  const arg = args.join(' ');
+
+  switch (cmd.toLowerCase()) {
+    case 'profile':
+      characterData[activeCharacterIndex].profile = arg;
+      displayMessage('システム', 'キャラクタープロフィールが更新されました。');
+      break;
+    case 'voice':
+      characterData[activeCharacterIndex].voice = arg;
+      displayMessage('システム', 'キャラクターの声が更新されました。');
+      break;
+    case 'emotion':
+      characterData[activeCharacterIndex].emotion = arg;
+      displayMessage('システム', 'キャラクターの感情が更新されました。');
+      break;
+    case 'action':
+      displayMessage(characterData[activeCharacterIndex].name, `*${arg}*`);
+      break;
+    default:
+      displayMessage('システム', '無効なコマンドです。');
+  }
+}
+
+async function generateCharacterResponse(userMessage) {
+  try {
+    const activeCharacter = characterData[activeCharacterIndex];
+    let prompt = `あなたは${activeCharacter.name}として振る舞ってください。`;
+    
+    if (activeCharacter.profile) {
+      prompt += `あなたの経歴: ${activeCharacter.profile}。`;
+    }
+    
+    if (activeCharacter.voice) {
+      prompt += `あなたの声の調子: ${activeCharacter.voice}。`;
+    }
+    
+    if (activeCharacter.emotion) {
+      prompt += `あなたの現在の感情: ${activeCharacter.emotion}。`;
+    }
+    
+    prompt += `ユーザーのメッセージ: "${userMessage}"
+このメッセージに対して、キャラクターとして適切に応答してください。`;
+
+    return await generateGeminiResponse(prompt);
+  } catch (error) {
+    console.error('Error generating character response:', error);
+    return "申し訳ありません。キャラクターの応答生成中にエラーが発生しました。";
+  }
+}
+
+function displayMessage(sender, message) {
+  const chatMessages = document.getElementById('chatMessages');
+  const messageElement = document.createElement('div');
+  messageElement.innerHTML = `<strong>${sender}:</strong> <span class="${sender === 'あなた' ? 'user-message' : ''}">${message}</span>`;
+  chatMessages.appendChild(messageElement);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function generateBlogPost() {
+  const activeCharacter = characterData[activeCharacterIndex];
+  if (activeCharacter && activeCharacter.name) {
+    const blogPost = `
+      <h2>${activeCharacter.name}のブログ</h2>
+      <p>こんにちは、${activeCharacter.name}です！今日は素晴らしい冒険がありました。</p>
+      <p>${worldData ? worldData.name : '私たちの世界'}は本当に驚きに満ちていて、
+      毎日が新しい発見の連続です。今日は特に印象的な出来事がありました...</p>
+      <p>（ここに、キャラクターの個性や世界観に基づいた、より詳細な冒険や日常の描写が続きます）</p>
+    `;
+    const gameInfo = document.getElementById('gameInfo');
+    gameInfo.innerHTML = blogPost;
+  } else {
+    alert('キャラクター情報がありません。まずキャラクターを設定してください。');
+  }
+}
+
+// Initialize dropzones and difficulty selector
+setupDropzone('characterDropzone1', 'characterText1', 'characterFile1', 0);
+setupDropzone('characterDropzone2', 'characterText2', 'characterFile2', 1);
+setupDropzone('characterDropzone3', 'characterText3', 'characterFile3', 2);
+setupDropzone('worldDropzone', 'worldText', 'worldFile');
+setupDropzone('modDropzone', 'modText', 'modFile');
+
+document.querySelectorAll('input[name="difficulty"]').forEach(radio => {
+  radio.addEventListener('change', changeDifficulty);
+});
+
+document.addEventListener('DOMContentLoaded', (event) => {
+  const userInput = document.getElementById('userInput');
+  userInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+});
+</script>
+</body>
+</html>

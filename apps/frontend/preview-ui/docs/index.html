@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IZAKAYA verse - ポイント購入</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        .points-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .point-card {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        .point-card:hover {
+            transform: translateY(-5px);
+        }
+        .point-card h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.5em;
+        }
+        .price {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .qr-code {
+            max-width: 150px;
+            margin: 15px auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        .paypal-link {
+            display: inline-block;
+            background: #0070ba;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: background 0.3s ease;
+        }
+        .paypal-link:hover {
+            background: #005ea6;
+        }
+        .support-section {
+            margin-top: 40px;
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        .status {
+            text-align: center;
+            margin: 20px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍶 IZAKAYA verse</h1>
+        <p class="status">🚀 試験運用中 - ポイント購入はこちらから</p>
+        
+        <div class="points-grid">
+            <div class="point-card">
+                <h3>IZAKAYA 1000P</h3>
+                <p>IZAKAYAverseの利用ポイント1000Pを購入します</p>
+                <div class="price">¥1,000</div>
+                <img src="assets/IZAKAYA POINT QR/IZAKAYA 1000P-qrcode.png" alt="1000P QR" class="qr-code">
+                <br>
+                <a href="https://www.paypal.com/ncp/payment/SBPMPM8BFRQUW" class="paypal-link" target="_blank">
+                    PayPalで購入
+                </a>
+            </div>
+            
+            <div class="point-card">
+                <h3>IZAKAYA 5000P</h3>
+                <p>IZAKAYAverseの利用ポイント5000Pを購入します</p>
+                <div class="price">¥5,000</div>
+                <img src="assets/IZAKAYA POINT QR/IZAKAYA 5000P-qrcode.png" alt="5000P QR" class="qr-code">
+                <br>
+                <a href="https://www.paypal.com/ncp/payment/WWLCPFUX2K2VA" class="paypal-link" target="_blank">
+                    PayPalで購入
+                </a>
+            </div>
+            
+            <div class="point-card">
+                <h3>IZAKAYA 1000P (USD)</h3>
+                <p>Purchase 1000 points for IZAKAYAverse</p>
+                <div class="price">$10 USD</div>
+                <img src="assets/IZAKAYA POINT QR/IZAKAYA 1000PE-qrcode.png" alt="1000P USD QR" class="qr-code">
+                <br>
+                <a href="https://www.paypal.com/ncp/payment/HTHQFN7EADLPC" class="paypal-link" target="_blank">
+                    PayPalで購入
+                </a>
+            </div>
+            
+            <div class="point-card">
+                <h3>IZAKAYA 5000P (USD)</h3>
+                <p>Purchase 5000 points for IZAKAYAverse</p>
+                <div class="price">$50 USD</div>
+                <img src="assets/IZAKAYA POINT QR/IZAKAYA 5000PE-qrcode.png" alt="5000P USD QR" class="qr-code">
+                <br>
+                <a href="https://www.paypal.com/ncp/payment/PKBQ6WBAGHVUW" class="paypal-link" target="_blank">
+                    PayPalで購入
+                </a>
+            </div>
+        </div>
+        
+        <div class="support-section">
+            <h3>IZAKAYA Support / Motoo Koyama</h3>
+            <p>IZAKAYAverseやMotooKoyama関連コンテンツの活動を支援するためのカンパです（ポイント付与はありません）。</p>
+            <div class="price">自由設定</div>
+            <img src="assets/IZAKAYA POINT QR/IZAKAYA Suppor-qrcode.png" alt="Support QR" class="qr-code">
+            <br>
+            <a href="https://www.paypal.com/ncp/payment/YP4SEMBEH3AHQ" class="paypal-link" target="_blank">
+                支援する
+            </a>
+        </div>
+        
+        <div class="status">
+            <p>📖 Amazon冊子や配布物からも購入可能</p>
+            <p>🎮 バーチャルコミックマーケット: <a href="https://www.amazon.co.jp/dp/B0CQQ3YNPR" target="_blank" style="color: #ffd700;">https://www.amazon.co.jp/dp/B0CQQ3YNPR</a></p>
+            <p>🤖 電子妖精アバタモ⭐︎エクボ2.0: <a href="https://www.amazon.co.jp/dp/B0CW1NBPTB" target="_blank" style="color: #ffd700;">https://www.amazon.co.jp/dp/B0CW1NBPTB</a></p>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="roadmap.html" style="display: inline-block; background: linear-gradient(45deg, #ffd700, #ffed4e); color: #333; padding: 12px 24px; text-decoration: none; border-radius: 25px; font-weight: bold; transition: transform 0.3s ease;">
+                📋 コンテンツロードマップを見る
+            </a>
+        </div>
+    </div>
+</body>
+</html>

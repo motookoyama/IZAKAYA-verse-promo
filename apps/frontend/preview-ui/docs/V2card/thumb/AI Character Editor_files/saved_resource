@@ -1,0 +1,4645 @@
+<!doctype html>
+<html lang="en" class="h-100" data-bs-theme="auto">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="application-name" content="AI Character Editor">
+	<meta name="description" content="Create, edit and convert AI character files for CharacterAI, Pygmalion, Text Generation and TavernAI">
+	<!--<meta name="version" content="0.5.1">
+	<meta name="revision" content="2023-02-06">-->
+	<meta name="version" content="0.6">
+	<meta name="revision" content="2023-10-10">
+	<meta name="author" content="ZoltanAI, AVAKSon, neptunebooty">
+	<meta name="contact" content="Zoltan#8287, AVAKSon#0498 and neptunebooty on Discord">
+	<meta name="license" content="GNU-GPLv3">
+	<meta name="color-scheme" content="light dark" />
+	<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F8F9FA" />
+	<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#2B3035" />
+	<meta name="twitter:card" content="summary">
+	<meta property="og:title" content="AI Character Editor">
+	<meta property="og:description" content="Create, edit and convert AI character files for CharacterAI, Pygmalion, Text Generation and TavernAI">
+	<meta property="og:url" content="https://desune.moe/aichared/">
+	<meta property="og:type" content="website">
+	<title>AI Character Editor</title>
+	<script>
+		(() => {
+			'use strict';
+
+			const getTheme = () => localStorage.getItem('theme') ?? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+			document.documentElement.setAttribute('data-bs-theme', getTheme());
+
+			window.addEventListener('DOMContentLoaded', () => {
+				document.getElementById('theme').addEventListener('click', () => {
+					const theme = getTheme() === 'dark' ? 'light' : 'dark';
+					localStorage.setItem('theme', theme);
+					document.documentElement.setAttribute('data-bs-theme', theme);
+				});
+			});
+		})();
+	</script>
+
+	<link rel="icon" type="image/x-icon" href="img/favicon.ico">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+	<link href="style.css" rel="stylesheet">
+
+	<!-- PRISM SYNTAX 
+	<link rel="stylesheet" href="styles/prism.css">
+	<link rel="stylesheet" href="https://prismjs.com/plugins/line-numbers/prism-line-numbers.css">
+	<link rel="stylesheet" href="styles/prism-live.css">
+	<link rel="stylesheet" href="style/prism-style.css">-->
+</head>
+
+<body class="d-flex flex-column h-100 bg-body-tertiary">
+<!--<body class="d-flex flex-column h-100 bg-body-tertiary justify-content-center">-->
+	<main class="flex-shrink-0">
+		<div class="container pt-4 pb-5">
+
+<!--<div class="toast-container position-fixed bottom-0 start-0">
+<div class="toast" role="alert" id="toast" aria-live="assertive" aria-atomic="true">
+  <div class="toast-header">
+    <img src="..." class="rounded me-2" alt="...">
+    <strong class="me-auto">Tooltip</strong>
+    <small>11 mins ago</small>
+    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+  </div>
+  <div class="toast-body">
+	<li>Use <b>{{char}}</b> variable for character's identification and <b>{{user}}</b> for user's, obviously;</li>
+	<li>Also use asterisks ( <b>*</b> ) to indicate inner thoughts and quotation marks (<b>" "</b>) for direct speech;</li>
+	<li>Editors supports <b>XML-markup</b> and block structure of writing using a scheme <b>[&#60;tag&#62;</b>TEXT<b>&#60;/tag&#62;]</b></li>
+  </div>
+</div>
+</div>-->
+
+			<h1 class="display-1 text-center"><b>AIChar</b>ED</h1>
+			<!--<p class="my-0 lead text-center">Create, edit and convert to and from <a href="https://beta.character.ai/" target="_blank">CharacterAI</a> <a href="https://github.com/irsat000/CAI-Tools" target="_blank">dumps</a>, <a href="https://github.com/PygmalionAI/gradio-ui" target="_blank">Pygmalion</a>, <a href="https://github.com/oobabooga/text-generation-webui" target="_blank">Text Generation</a> and <a href="https://github.com/Cohee1207/SillyTavern" target="_blank">TavernAI</a> formats easily</p>
+			<p class="lead text-center">Supports both JSON and Character Card image files</p>-->
+
+			<p class="display-5 lead text-center">Create and edit <b>your waifu</b> for a <b>nice coom</b> in <a href="http://127.0.0.1:8000/" target="_blank">SillyTavern</a>!</p>
+			<p class="my-0 lead text-center">Also you can use a <a href="https://zoltanai.github.io/character-editor/" target="_blank">classic version</a> for testing purposes, that was originally created by <b>Zoltan#8287</b>, or a <a href="https://avakson.github.io/character-editor/" target="_blank">modified one</a>, that was forked by <b>AVAKSon#0498</b></p>
+
+			<button id="theme" class="btn btn-outline-secondary position-absolute top-0 end-0 m-4"><i class="bi bi-lightbulb"></i></button>
+			<!--<button type="button" class="btn btn-outline-secondary position-absolute top-0 end-0 m-4" id="liveToastBtn"><i class="bi bi-box-arrow-up-right"></i></button>-->
+			<button type="button" class="btn btn-outline-secondary position-absolute top-0 end-0 m-4" id="toastTokenCounterBtn"><i class="bi bi-bar-chart"></i></button>
+			<button type="button" class="btn btn-outline-secondary position-absolute top-0 end-0 m-4" id="toastCheatsheetBtn"><i class="bi bi-code-slash"></i></button>
+			<button type="button" class="btn btn-outline-secondary position-absolute top-0 end-0 m-4" id="toastDraftBtn"><i class="bi bi-clipboard"></i></button>
+
+
+
+
+
+
+
+
+<div class="toast-container position-fixed top-0 start-0 p-3">
+  <div id="toastDraft" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
+    <div class="toast-header">
+      <!--<img src="girl_16.ico" class="rounded me-2" alt="...">-->
+      <i class="bi bi-clipboard-fill"></i>
+      <strong class="me-auto">&nbsp;Draft</strong>
+      <button type="button" class="btn-save" onclick="saveTextAsFile()"></button>
+      <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+
+<div class="toast-body">
+		<div class="mb-0">
+		<textarea class="form-control" id="draft" rows="10" placeholder="Just a blank textarea for random stuff..." style="height: 100px%"></textarea>
+		<label for="edit-comment" class="form-label float-end mt-1 small text-secondary" hidden="hidden"></label>
+		<label for="edit-comment" class="form-label float-end mt-1 small text-secondary user-select-none header" hidden="hidden">Doesn't count</label>
+	</div>
+</div>
+</div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+  <div id="toastCheatsheet" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
+    <div class="toast-header">
+      <!--<img src="girl_16.ico" class="rounded me-2" alt="...">-->
+      <i class="bi bi-code-slash"></i>
+      <strong class="me-auto">&nbsp;Cheatsheet</strong>
+      <a href="https://docs.sillytavern.app/usage/core-concepts/characterdesign/#replacement-tags-macros" target="_blank">Guide</a>
+      <small></small>
+      <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+
+<div class="toast-body">
+<div class="cheatsheetsubheader user-select-none">
+<b>Values</b>
+</div>
+<div class="btns">
+		<input type="button" class="btn btn-light btn-sm" id="charqi" value="{{char}}" />
+		<div class="user-select-none">Main value</div>
+		<input type="button" class="btn btn-light btn-sm" id="userqi" value="{{user}}" />
+</div>
+
+<div class="btns">
+		<input type="button" class="btn btn-light btn-sm" id="charqi" value="<{{char}}>" />
+		<div class="user-select-none">Open tag</div>
+		<input type="button" class="btn btn-light btn-sm" id="charqi" value="</{{char}}>" />
+
+</div>
+
+<div class="btns">
+		<input type="button" class="btn btn-light btn-sm" id="userqi" value="<{{user}}>" />
+		<div class="user-select-none">Close tag</div>
+		<input type="button" class="btn btn-light btn-sm" id="userqi" value="</{{user}}>" />
+</div>
+
+<!--div class="btns">
+		<input type="button" class="btn btn-light btn-sm" id="charqi" value="/{{char}}" />
+		<input type="button" class="btn btn-light btn-sm" id="userqi" value="/{{user}}" />
+		<input type="button" class="btn btn-light btn-sm" id="userqi" value="/{{tag}}" />
+</div-->
+
+
+<hr>
+
+<div class="cheatsheetsubheader user-select-none">
+<b>Blocks</b>
+</div>
+<div class="btns">
+		<input type="button" class="btn btn-light btn-sm" value="[<tag>" />
+		<div class="user-select-none">Global tag</div>
+		<input type="button" class="btn btn-light btn-sm" value="</tag>]" />
+</div>
+
+<div class="btns">
+		<input type="button" class="btn btn-light btn-sm" value="<tag>" />
+		<div class="user-select-none">Inner tag</div>
+		<input type="button" class="btn btn-light btn-sm" value="</tag>" />
+</div>
+
+<div class="btns">
+		<input type="button" class="btn btn-light btn-sm" value="[tag]" />
+		<div class="user-select-none">Bracket text</div>
+		<input type="button" class="btn btn-light btn-sm" value="![tag]" />
+</div>
+
+<!--div class="btns">
+		<input type="button" class="btn btn-light btn-sm" id="noteqi" value="[<tag>TEXT</tag>]" />
+		<input type="button" class="btn btn-light btn-sm" id="noteqi" value="<tag>TEXT</tag>" />
+</div-->
+<hr>
+
+<div class="cheatsheetsubheader user-select-none">
+<b>Misc</b>
+</div>
+
+<div class="btns">
+		<input type="button" class="btn btn-light btn-sm" value="{{// (TEXT)}}" />
+		<input type="button" class="btn btn-light btn-sm" value="*TEXT*" />
+		<input type="button" class="btn btn-light btn-sm" value="&#34;TEXT&#34;" />
+</div>
+<div class="d-grid gap-2">
+<button class="btn btn-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample">More</button>
+</div>
+<div class="collapse" id="collapseExample">
+		<input type="button" class="btn btn-light btn-sm" value="<START>" />
+		<input type="button" class="btn btn-light btn-sm" value="<appearance>" />
+		<input type="button" class="btn btn-light btn-sm" value="</appearance>" />
+		<input type="button" class="btn btn-light btn-sm" value="<personality>" />
+		<input type="button" class="btn btn-light btn-sm" value="</personality>" />
+		<input type="button" class="btn btn-light btn-sm" value="<body>" />
+		<input type="button" class="btn btn-light btn-sm" value="</body>" />
+		<input type="button" class="btn btn-light btn-sm" value="<quirks>" />
+		<input type="button" class="btn btn-light btn-sm" value="</quirks>" />
+		<input type="button" class="btn btn-light btn-sm" value="<history>" />
+		<input type="button" class="btn btn-light btn-sm" value="</history>" />
+</div>
+
+		<!--script>
+		  document.getElementById("charqi").value = "Char";
+		  document.getElementById("userqi").value = "User";
+		  document.getElementById("noteqi").value = "Note";
+		</script-->
+
+</div>
+	</div>
+</div>
+
+
+
+
+
+
+
+<div class="toast-container position-fixed bottom-0 start-0 p-3">
+  <div id="toastTokenCounter" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
+    <div class="toast-header">
+      <!--<img src="girl_16.ico" class="rounded me-2" alt="...">-->
+      <i class="bi bi-bar-chart-fill"></i>
+      <strong class="me-auto">&nbsp;Token Counter</strong>
+      <small></small>
+      <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+
+<div class="toast-body tabs">
+	<ul class="nav nav-pills nav-fill mb-3" id="pills-tab" role="tablist">
+		<li class="nav-item" role="presentation">
+			<button class="nav-link active" id="pills-original-tab" data-bs-toggle="tab" data-bs-target="#pills-original" type="button" role="tab" aria-controls="pills-original" aria-selected="true">&nbsp;&nbsp;Original&nbsp;&nbsp;</button>
+		</li>
+		<li class="nav-item" role="presentation">
+			<button class="nav-link" id="pills-translated-tab" data-bs-toggle="tab" data-bs-target="#pills-translated" type="button" role="tab" aria-controls="pills-translated" aria-selected="false">Translated</button>
+		</li>
+	</ul>
+
+</div>
+
+    	<div class="toast-body">
+						<div class="text" id="edit-tokens" role="text">
+							<div class="float-start text-secondary"></div>
+						</div>
+		</div>
+	</div>
+</div>
+
+			<div class="container my-5 text-center">
+				<div id="site-alert" class="alert alert-warning alert-dismissible show d-none" role="alert">
+					None of your data is uploaded or shared, this entire webpage runs locally in your browser!
+					<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+				</div>
+			</div>
+
+			<div class="container">
+				<div id="accordion" class="accordion border-0">
+					<div class="accordion-item">
+						<h2 class="accordion-header">
+							<button class="accordion-button shadow-none fs-5" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-load">
+								<i class="bi bi-file-earmark-plus flex-shrink-0 me-2"></i> Load
+							</button>
+						</h2>
+
+						<div id="accordion-load" class="accordion-collapse collapse show" data-bs-parent="#accordion">
+							<div class="accordion-body text-center p-0">
+								<div class="container">
+									<div class="row">
+										<div class="col-4 py-5 position-relative">
+											<form id="load-form">
+												<i class="bi bi-cloud-upload display-2 text-primary"></i>
+
+												<p class="my-2">Drag &amp; drop a JSON or image to the page<br><i>or</i></p>
+
+												<label for="load" class="btn btn-primary stretched-link">Choose file...</label>
+												<input id="load" class="position-absolute invisible" type="file" accept="application/json, image/png">
+											</form>
+										</div>
+
+										<div class="col-4 py-5 position-relative border-start">
+											<i class="bi bi-file-earmark-plus display-2 text-primary"></i>
+
+											<p class="my-2">Start from scratch and create a new character<br><br></p>
+
+											<button id="create" type="button" class="btn btn-primary stretched-link">New character</button>
+										</div>
+
+										<div class="col-4 py-5 position-relative border-start">
+											<!--<i class="bi bi-save display-2 text-primary"></i>-->
+											<i class="bi bi-arrow-clockwise display-2 text-primary"></i>
+
+											<p class="my-2">Restore the last character you worked on<br><br></p>
+
+											<button id="restore" type="button" class="btn btn-primary stretched-link">Restore</button>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="accordion-item">
+						<h2 class="accordion-header">
+							<button class="accordion-button collapsed shadow-none fs-5" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-edit" disabled autocomplete="off">
+								<i class="bi bi-pencil flex-shrink-0 me-2"></i> Edit
+							</button>
+						</h2>
+
+<!--<div class="position-fixed bottom-0 end-0 p-3">-->
+
+						<div id="accordion-edit" class="accordion-collapse collapse" data-bs-parent="#accordion">
+							<div class="accordion-body">
+								<div class="container">
+									<div class="row">
+										<div id="edit-alert-characterai-history" class="my-2 alert alert-warning alert-dismissible show d-none" role="alert">
+											<p class="fw-semibold">You have loaded a CharacterAI chat history file</p>
+											<p class="mb-0">CharacterAI chat history files do not contain character Example Messages, so where possible use a CharacterAI character definition file!<br>If the character you want to use is your own or the character settings are public, then you will get better results <a id="edit-alert-characterai-history-link" class="alert-link" href="#" target="_blank">downloading a definition dump</a> instead.</p>
+											<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+										</div>
+									</div>
+
+									<div class="row my-3">
+										<div id="edit-details" class="col-12 col-md-5 col-lg-4 col-xl-3">
+											<figure class="mb-4 figure w-100 text-center">
+												<div class="position-relative w-100 h-100">
+													<input id="image" class="position-absolute invisible" type="file" accept="image/*">
+
+												<div class="image">
+													<a id="edit-image-add" href="" class="position-absolute top-0 start-0 w-100 h-100 d-inline-block rounded stretched-link z-3">
+														<svg class="position-absolute top-50 start-50 translate-middle w-25 h-25 d-none" xmlns="http://www.w3.org/2000/svg" fill="var(--bs-secondary-bg)" viewBox="0 0 16 16">
+															<path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2Z"/>
+														</svg>
+													</a>
+
+													<svg id="edit-image-placeholder" class="img-thumbnail w-100 bg-body-tertiary" xmlns="http://www.w3.org/2000/svg" width="2" height="3" viewBox="0 0 16 16" fill="var(--bs-secondary-bg)">
+														<path d="M6.5 2a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3zM11 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
+														<path d="M4.5 0A2.5 2.5 0 0 0 2 2.5V14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2.5A2.5 2.5 0 0 0 11.5 0h-7zM3 2.5A1.5 1.5 0 0 1 4.5 1h7A1.5 1.5 0 0 1 13 2.5v10.795a4.2 4.2 0 0 0-.776-.492C11.392 12.387 10.063 12 8 12s-3.392.387-4.224.803a4.2 4.2 0 0 0-.776.492V2.5z"/>
+													</svg>
+
+													<img id="edit-image" class="img-thumbnail w-100 bg-body-tertiary d-none" src="#" alt="">
+												</div>
+
+												</div>
+
+												<!--figcaption id="edit-image-details" class="figure-caption d-inline-flex mt-1 d-none"></figcaption-->
+												<figcaption id="edit-image-details" class="figure-caption d-inline-center mt-1 d-none"></figcaption>
+												<i class="bi bi-info-circle fs-5 d-inline-block ms-1 align-top text-success d-none" data-bs-toggle="tooltip" data-bs-custom-class="tooltip-help" data-bs-title="Character Card images should be 400 x 600px (2:3)"></i>
+											</figure>
+
+
+											<!--div id="edit-char" class="container p-3 border rounded d-none">
+											<p-->
+
+											<div id="edit-original" class="container p-3 border rounded d-none">
+
+												<div class="row text-center">
+													<h3 class="h5">Card Info</h3>
+												</div>
+
+												<div id="edit-char-name" class="col-auto ms-auto text-center"></div>
+
+												<!--div class="row mt-2">
+													<div class="col-auto fw-bold">Name</div>
+													<div id="edit-char-name" class="col-auto ms-auto text-end"></div>
+												</div-->
+
+												<div class="row mt-2">
+													<!--<div class="col-auto fst-italic">Size</div>-->
+													<div class="col-auto fw-bold">Version</div>
+													<div id="edit-char-version" class="col-auto ms-auto text-end"></div>
+												</div>
+
+												<div class="row mt-2">
+													<!--<div class="col-auto fst-italic">Size</div>-->
+													<div class="col-2 fw-bold">Creator</div>
+													<div id="edit-char-creator" class="col-10 ms-auto text-end text-nowrap"></div>
+												</div>
+
+											<hr>
+
+												<div class="row text-center">
+													<h3 class="h5">Original File</h3>
+												</div>
+
+												<div id="edit-original-name" class="col-auto ms-auto text-center text-break text-wrap"></div>
+
+												<!--div class="row mt-2">
+													<div class="col-auto fw-bold">Filename</div>
+													<div id="edit-original-name" class="col-auto ms-auto text-end text-break text-wrap"></div>
+												</div-->
+
+												<div class="row mt-2">
+													<!--<div class="col-auto fst-italic">Format</div>-->
+													<div class="col-auto fw-bold">Format</div>
+													<div id="edit-original-format" class="col-auto ms-auto text-end text-break text-wrap"></div>
+													<!--<div id="edit-original-name" class="col-6 ms-auto text-end text-break text-truncate"></div>-->
+												</div>
+
+												<div class="row mt-2">
+													<!--<div class="col-auto fst-italic">Tokens</div>-->
+													<div class="col-auto fw-bold">Tokens</div>
+													<div id="edit-original-tokens" class="col-auto ms-auto text-end"></div>
+												</div>
+
+												<div class="row mt-2">
+													<!--<div class="col-auto fst-italic">Size</div>-->
+													<div class="col-auto fw-bold">Size</div>
+													<div id="edit-original-size" class="col-auto ms-auto text-end"></div>
+												</div>
+
+												<div class="row mt-2">
+													<!--<div class="col-auto fst-italic">Last Modified</div>-->
+													<div class="col-auto fw-bold">Modified</div>
+													<div class="col-auto ms-auto text-end">
+														<time id="edit-original-modified" class="border-bottom border-dotted border-primary" datetime="" data-bs-toggle="tooltip" data-bs-title=" "></time>
+													</div>
+												</div>
+
+											</div>
+
+											<div class="text" id="edit-tokens" role="text">
+											<div class="float-start text-secondary"></div>
+											</div>
+
+											<div id="edit-metadata-cai" class="container mt-4 p-3 border rounded d-none">
+												<div class="row text-center">
+													<h3 class="h5">CharacterAI Metadata</h3>
+												</div>
+
+												<div class="row mt-3 d-none">
+													<div class="col-auto fst-italic">Character</div>
+													<div class="col-auto ms-auto text-end">
+														<a id="edit-metadata-cai-link" href="#" target="_blank"></a>
+													</div>
+												</div>
+
+												<div class="row mt-3 d-none">
+													<div class="col-auto fst-italic">Visibility</div>
+													<div id="edit-metadata-cai-visibility" class="col-auto ms-auto text-end"></div>
+												</div>
+
+												<div class="row mt-3 d-none">
+													<div class="col-auto fst-italic">Interactions</div>
+													<div id="edit-metadata-cai-interactions" class="col-auto ms-auto text-end"></div>
+												</div>
+
+												<div class="row mt-3 d-none">
+													<div class="col-auto fst-italic">Categories</div>
+													<div id="edit-metadata-cai-categories" class="col-auto ms-auto text-end"></div>
+												</div>
+
+												<div class="row mt-3 d-none">
+													<div class="col-auto fst-italic">Image Generation</div>
+													<div id="edit-metadata-cai-image-generation" class="col-auto ms-auto text-end"></div>
+												</div>
+											</div>
+										</div>
+
+										<div class="col-12 col-md-7 col-lg-8 col-xl-9">
+
+
+<!--ul class="nav nav-pills nav-fill mb-3" id="pills-tab" role="tablist">
+	<li class="nav-item" role="presentation">
+		<button class="nav-link active" id="pills-original-tab" data-bs-toggle="tab" data-bs-target="#pills-original" type="button" role="tab" aria-controls="pills-original" aria-selected="true">Original (English language)</button>
+	</li>
+	<li class="nav-item" role="presentation">
+		<button class="nav-link" id="pills-translated-tab" data-bs-toggle="tab" data-bs-target="#pills-translated" type="button" role="tab" aria-controls="pills-translated" aria-selected="false">Translated (Second language)</button>
+	</li>
+</ul-->
+
+<div class="tab-content" id="pills-tabContent">
+	<div class="tab-pane fade show active" id="pills-original" role="tabpanel" aria-labelledby="pills-original-tab">
+
+		<!--<div class="alert alert-warning" role="alert">
+			<h5>Content of this tab <b>will be sent</b> by SillyTavern as a prompt</h5>
+		</div>-->
+
+		<div class="alert alert-light" role="alert">
+			<!--Use <span class="badge bg-secondary">{{char}}</span> variable <b>for character's</b> identification and <span class="badge bg-secondary">{{user}}</span> for <b>user's</b>, obviously;<br>Also use asterisks <span class="badge bg-secondary">*</span> to indicate <b>inner thoughts</b> and quotation marks <span class="badge bg-secondary">""</span> for <b>direct speech</b>.
+			</div>-->
+			<h5>Content of this page <b>will be sent</b> by SillyTavern as a prompt</h5>
+			<hr>
+			<li>Use <b>{{char}}</b> variable for character's identification and <b>{{user}}</b> for user's, obviously;</li>
+			<li>Also use asterisks ( <b>*</b> ) to indicate inner thoughts and quotation marks (<b>" "</b>) for direct speech;</li>
+			<li>To simplify the logic use <b><a href="https://platform.openai.com/docs/guides/prompt-engineering/tactic-use-delimiters-to-clearly-indicate-distinct-parts-of-the-input" target="_blank" style="text-decoration:none">XML-markup</a></b>: block structure of writing according to a scheme <b>[&#60;tag&#62;</b>TEXT<b>&#60;/tag&#62;]</b>.</li>
+			<!--Use <b>{{char}}</b> variable for character's identification and <b>{{user}}</b> for user's, obviously;<br>Also use asterisks <i class="bi bi-asterisk"></i> to indicate inner thoughts and quotation marks <i class="bi bi-quote"></i> for direct speech.-->
+		</div>
+
+<h4><div class="mainheader">Main Info</div></h4>
+
+<form class="needs-validation" autocomplete="off" novalidate>
+
+	<div class="row" id="anchor-name">
+		<div class="col-12 col-sm-4">
+			<span class="d-inline-block" tabindex="0" data-bs-toggle="popover">
+				<label for="edit-name" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-user"></i> Name</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+				<ul class="list-group list-group-flush d-none">
+					<li class="list-group-item">
+						<span class="fw-semibold"><i class="fa-solid fa-user"></i> Character's name</span>
+						<p class="mb-0">The name of a character and value for <b>{{char}}</b> variable</p>
+					</li>
+				</ul>
+			</span>
+	
+			<input type="text" class="form-control" id="edit-name" required>
+			<label for="edit-name" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+
+			<div class="invalid-feedback">
+				Name is required by all formats
+			</div>
+		</div>
+
+		<div class="col-6 col-sm-4">
+			<span class="d-inline-block" tabindex="0" data-bs-toggle="popover">
+				<label for="edit-version" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-code-branch"></i> Version</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+				<ul class="list-group list-group-flush d-none">
+					<li class="list-group-item">
+						<span class="fw-semibold"><i class="fa-solid fa-code-branch"></i> Character's version</span>
+						<p class="mb-0">For tracking different versions of the character; can be displayed instead of <b>Commentary</b> in the character list</p>
+					</li>
+				</ul>
+			</span>
+	
+			<input type="text" class="form-control" id="edit-version">
+			<!--<textarea class="form-control auto-size" id="edit-version" rows="1"></textarea>-->
+			<label for="edit-version" class="form-label float-end mt-1 small text-secondary" hidden="hidden"></label>
+			<label for="edit-version" class="form-label float-end mt-1 small text-secondary user-select-none header">Doesn't count</label>
+		</div>
+
+		<div class="col-6 col-sm-4">
+			<span class="d-inline-block" tabindex="0" data-bs-toggle="popover">
+				<a button id="button1" onclick="swapInputs()">
+				<label for="edit-creator-noselect" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-at"></i> Creator</label></a></button><i class="bi bi-info-circle fs-5 text-primary"></i>
+				<ul class="list-group list-group-flush d-none">
+					<li class="list-group-item">
+						<span class="fw-semibold"><i class="fa-solid fa-at"></i> Created by</span>
+						<p class="mb-0">Put your name here, brave coomer; click on label to change field to personal page link (Rentry, for example) and vice versa</p>
+					</li>
+				</ul>
+			</span>
+
+			<input type="text" class="form-control" id="edit-rentry" style="display:none;" placeholder="https://rentry.co/mycoombattalion">
+			<input type="text" class="form-control" id="edit-creator" placeholder="">
+			<!--<textarea class="form-control auto-size" id="edit-creator" rows="1"></textarea>-->
+			<label for="edit-creator" class="form-label float-end mt-1 small text-secondary" hidden="hidden"></label>
+			<label for="edit-creator" class="form-label float-end mt-1 small text-secondary user-select-none header">Doesn't count</label>
+		</div>
+	</div>
+
+
+
+	<div class="mb-3" id="anchor-personality">
+		<span class="d-inline-block sticky" tabindex="0" data-bs-toggle="popover">
+			<label for="edit-personality" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-align-left"></i> Description</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+			<ul class="list-group list-group-flush d-none">
+				<li class="list-group-item">
+					<span class="fw-semibold"><i class="fa-solid fa-align-left"></i> Character's description</span>
+					<p class="mb-0">The main and full description of a character, which shapes their entire personality</p>
+				</li>
+			</ul>
+		</span>
+
+		<textarea class="form-control auto-size" id="edit-personality" rows="1"></textarea>
+		<!--<textarea class="prism-live language-html" id="edit-personality"></textarea>-->
+		<label for="edit-personality" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+	</div>
+
+<div class="mb-3" id="anchor-greeting">
+		<span class="d-inline-block sticky" tabindex="0" data-bs-toggle="popover">
+			<label for="edit-greeting" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-hand-peace"></i> First Message</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+			<ul class="list-group list-group-flush d-none">
+				<li class="list-group-item">
+					<span class="fw-semibold"><i class="fa-solid fa-hand-peace"></i> Character's greeting</span>
+					<p class="mb-0">First message (greeting) from the character, which shapes much of their behavior</p>
+				</li>
+			</ul>
+		</span>
+
+	<div id="carouselExampleIndicators" class="carousel carousel-dark slide">
+		<div class="carousel-indicators">
+			<button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
+			<button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="1" aria-label="Slide 2"></button>
+			<button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="2" aria-label="Slide 3"></button>
+			<button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="3" aria-label="Slide 4"></button>
+			<button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="4" aria-label="Slide 5"></button>
+		</div>
+			<div class="carousel-inner">
+				<div class="carousel-item active">
+					<!--<textarea class="form-control auto-size" id="edit-greeting" rows="1"></textarea>-->
+					<textarea class="form-control auto-size" id="edit-greeting" rows="5" max-rows="11"></textarea>
+					<label for="edit-greeting" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+				</div>
+
+				<div class="carousel-item">
+						<!--<textarea class="form-control auto-size" id="edit-greeting" rows="1"></textarea>-->
+						<textarea class="form-control auto-size" id="alternate-greeting-1" rows="5" max-rows="11" placeholder="Alternative greeting #1"></textarea>
+						<label for="alternate-greeting-1" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+				</div>
+
+				<div class="carousel-item">
+						<!--<textarea class="form-control auto-size" id="edit-greeting" rows="1"></textarea>-->
+						<textarea class="form-control auto-size" id="alternate-greeting-2" rows="5" max-rows="11" placeholder="Alternative greeting #2"></textarea>
+						<label for="alternate-greeting-2" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+					</div>
+
+				<div class="carousel-item">
+						<!--<textarea class="form-control auto-size" id="edit-greeting" rows="1"></textarea>-->
+						<textarea class="form-control auto-size" id="alternate-greeting-3" rows="5" max-rows="11" placeholder="Alternative greeting #3"></textarea>
+						<label for="alternate-greeting-3" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+				</div>
+
+				<div class="carousel-item">
+						<!--<textarea class="form-control auto-size" id="edit-greeting" rows="1"></textarea>-->
+						<textarea class="form-control auto-size" id="alternate-greeting-4" rows="5" max-rows="11" placeholder="Alternative greeting #4"></textarea>
+						<label for="alternate-greeting-4" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+				</div>
+			</div>
+
+			<button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide="prev">
+				<span class="carousel-control-prev-icon" aria-hidden="true"></span>
+				<span class="visually-hidden">Previous</span>
+			</button>
+			<button class="carousel-control-next" type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide="next">
+				<span class="carousel-control-next-icon" aria-hidden="true"></span>
+				<span class="visually-hidden">Next</span>
+			</button>
+			</div>
+</div>
+
+	<!--<p></p>-->
+
+	<div class="mb-3" id="anchor-summary">
+		<span class="d-inline-block sticky" tabindex="0" data-bs-toggle="popover">
+			<label for="edit-summary" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-list"></i> Summary</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+			<ul class="list-group list-group-flush d-none">
+				<li class="list-group-item">
+					<span class="fw-semibold"><i class="fa-solid fa-list"></i></i> Personality summary</span>
+					<p class="mb-0">Listing or brief description of the character's traits and personality, e.g. «Cute, smug, bratty»</p>
+				</li>
+			</ul>
+		</span>
+
+		<textarea class="form-control auto-size" id="edit-summary" rows="4"></textarea>
+		<label for="edit-summary" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+	</div>
+
+	<div class="mb-3" id="anchor-scenario">
+		<span class="d-inline-block sticky" tabindex="0" data-bs-toggle="popover">
+			<label for="edit-scenario" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-scroll"></i> Scenario</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+			<ul class="list-group list-group-flush d-none">
+				<li class="list-group-item">
+					<span class="fw-semibold"><i class="fa-solid fa-scroll"></i> Default character's scenario</span>
+					<p class="mb-0">Circumstances and context of the dialogue</p>
+				</li>
+			</ul>
+		</span>
+
+		<textarea class="form-control auto-size" id="edit-scenario" rows="4"></textarea>
+		<label for="edit-scenario" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+	</div>
+
+	<div class="mb-3" id="anchor-examples">
+		<span class="d-inline-block sticky" tabindex="0" data-bs-toggle="popover">
+			<label for="edit-examples" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-comments"></i> Example Messages</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+			<ul class="list-group list-group-flush d-none">
+				<li class="list-group-item">
+					<span class="fw-semibold"><i class="fa-solid fa-comments"></i> Character's speech style</span>
+					<p class="mb-0">Describes how the character speaks; each example should start with <b>&lt;START&gt;</b> tag on a new line</p>
+				</li>
+			</ul>
+		</span>
+
+		<textarea class="form-control auto-size" id="edit-examples" rows="4" placeholder="&lt;START&gt;"></textarea>
+		<!--<textarea class="form-control" id="edit-examples" rows="19"></textarea>-->
+		<label for="edit-examples" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+	</div>
+
+	<div class="mb-3" id="anchor-character-note">
+		<span class="d-inline-block sticky" tabindex="0" data-bs-toggle="popover">
+			<label for="edit-character-note" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-paragraph"></i> Character's Note</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+			<div class="sublabel"><label for="edit-character-note-depth" class="form-label fw-semibold user-select-none header">Depth:&nbsp;</label><input type="number" min="0" id="edit-character-note-depth" placeholder="4"></div>
+			<ul class="list-group list-group-flush d-none">
+				<li class="list-group-item">
+					<span class="fw-semibold"><i class="fa-solid fa-paragraph"></i> Character's Note</span>
+					<p class="mb-0">Text that will be injected in-chat to a designated <b>Depth</b></p>
+				</li>
+			</ul>
+		</span>
+
+		<textarea class="form-control auto-size" id="edit-character-note" rows="1"></textarea>
+		<label for="edit-character-note" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+		<!--span class="form-label float-end mt-1 small text-secondary">Doesn't count</span-->
+	</div>
+
+<br>
+<hr>
+<h4><div class="mainheader">Additional Info and Prompt Overrides</div></h4>
+
+	<div class="mb-3" id="anchor-system-prompt">
+		<span class="d-inline-block sticky" tabindex="0" data-bs-toggle="popover">
+			<label for="edit-system-prompt" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-hashtag"></i> Main Prompt</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+			<label for="edit-system-prompt" class="form-label fw-semibold"></label>
+			<ul class="list-group list-group-flush d-none">
+				<li class="list-group-item">
+					<span class="fw-semibold"><i class="fa-solid fa-hashtag"></i> System Prompt</span>
+					<p class="mb-0">Custom <b>Main Prompt</b> for this character that will replace your default Main Prompt</p>
+				</li>
+			</ul>
+		</span>
+
+		<textarea class="form-control auto-size" id="edit-system-prompt" rows="1"></textarea>
+		<label for="edit-system-prompt" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+		<!--span class="form-label float-end mt-1 small text-secondary">Doesn't count</span-->
+	</div>
+
+	<div class="mb-3" id="anchor-post-history-instructions">
+		<span class="d-inline-block sticky" tabindex="0" data-bs-toggle="popover">
+			<label for="edit-post-history-instructions" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-hashtag"></i> Jailbreak</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+			<label for="edit-post-history-instructions" class="form-label fw-semibold"></label>
+			<ul class="list-group list-group-flush d-none">
+				<li class="list-group-item">
+					<span class="fw-semibold"><i class="fa-solid fa-hashtag"></i> Custom Jailbreak</span>
+					<p class="mb-0">Custom <b>Jailbreak</b> for this character that will replace your default Jailbreak</p>
+				</li>
+			</ul>
+		</span>
+
+		<textarea class="form-control auto-size" id="edit-post-history-instructions" rows="1"></textarea>
+		<label for="edit-post-history-instructions" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+		<!--span class="form-label float-end mt-1 small text-secondary">Doesn't count</span-->
+	</div>
+
+	<div class="mb-3">
+		<span class="d-inline-block sticky" tabindex="0" data-bs-toggle="popover">
+			<label for="edit-comment" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-quote-left"></i> Commentary</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+			<ul class="list-group list-group-flush d-none">
+				<li class="list-group-item">
+					<span class="fw-semibold"><i class="fa-solid fa-quote-left"></i> Creator's commentary</span>
+					<p class="mb-0">Some notes from the creator; can be displayed instead of <b>Version</b> in the character list</p>
+				</li>
+			</ul>
+		</span>
+
+		<textarea class="form-control auto-size" id="edit-comment" rows="1"></textarea>
+		<label for="edit-comment" class="form-label float-end mt-1 small text-secondary" hidden="hidden"></label>
+		<label for="edit-comment" class="form-label float-end mt-1 small text-secondary user-select-none header">Doesn't count</label>
+	</div>
+
+	<div class="mb-3">
+		<span class="d-inline-block" tabindex="0" data-bs-toggle="popover">
+			<label for="edit-tags" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-tags"></i> Tags</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+			<ul class="list-group list-group-flush d-none">
+				<li class="list-group-item">
+					<span class="fw-semibold"><i class="fa-solid fa-tags"></i> Character's tags</span>
+					<p class="mb-0">A comma-separated list of tags</p>
+				</li>
+			</ul>
+		</span>
+
+		<!--<textarea class="form-control auto-size" id="edit-tags" rows="1"></textarea>-->
+		<input type="text" class="form-control" id="edit-tags">
+		<label for="edit-tags" class="form-label float-end mt-1 small text-secondary" hidden="hidden"></label>
+		<label for="edit-tags" class="form-label float-end mt-1 small text-secondary user-select-none header">Doesn't count</label>
+	</div>
+
+	<div class="mb-3">
+		<span class="d-inline-block sticky" tabindex="0" data-bs-toggle="popover">
+			<label for="edit-talkativeness" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-wave-square"></i> Talkativeness</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+			<div class="sublabel"><label for="edit-talkativeness" class="form-label fw-semibold user-select-none header">Frequency:&nbsp;</label><text id="spanslider" style="inline">50%</text></div>
+			<ul class="list-group list-group-flush d-none">
+				<li class="list-group-item">
+					<span class="fw-semibold"><i class="fa-solid fa-wave-square"></i> Character's Talkativeness</span>
+					<p class="mb-0">Indicates how often the character speaks in <b>Group chats</b></p>
+				</li>
+			</ul>
+		</span>
+
+		<div class="slidecontainer">
+			<input type="range" min="0.00" max="1.00" step="0.05" value="0.50" id="edit-talkativeness">
+		</div>
+		<label for="edit-talkativeness" class="form-label float-end mt-1 small text-secondary" hidden="hidden"></label>
+		<span class="form-label float-end mt-1 small text-secondary"></span>
+	</div>
+
+<!--script>
+    document.getElementById("edit-talkativeness").oninput = function() {
+        const inputValue = Number(this.value);
+        const formattedValue = Math.round(inputValue * 100) + "%";
+        document.getElementById("spanslider").innerHTML = formattedValue;
+    }
+</script-->
+
+<script>
+    document.getElementById("edit-talkativeness").oninput = function() {
+        const inputValue = Number(this.value);
+        const formattedValue = Math.round(inputValue * 100) + "%";
+        document.getElementById("spanslider").innerHTML = formattedValue;
+    }
+
+    // Set initial value on page load
+    const initialValue = Number(document.getElementById("edit-talkativeness").value);
+    const initialFormattedValue = Math.round(initialValue * 100) + "%";
+    document.getElementById("spanslider").innerHTML = initialFormattedValue;
+</script>
+
+<div class="clearfix"></div>
+<span class="float-end mt-1 small fw-bold text-secondary user-select-none header" id="total-tokens"></span>
+<!--<ul id="tags"></ul>-->
+
+</div>
+</form>
+</div>
+
+<div class="tab-content" id="pills-tabContent">
+	<div class="tab-pane fade" id="pills-translated" role="tabpanel" aria-labelledby="pills-translated-tab">
+	
+		<!--<div class="alert alert-warning" role="alert">
+			<h5>Содержимое этой вкладки <b>не будет отправлено</b> SillyTavern в качестве промпта</h5>
+		</div>-->
+
+	<div class="alert alert-light" role="alert">
+		<!--Use <span class="badge bg-secondary">{{char}}</span> variable <b>for character's</b> identification and <span class="badge bg-secondary">{{user}}</span> for <b>user's</b>, obviously;<br>Also use asterisks <span class="badge bg-secondary">*</span> to indicate <b>inner thoughts</b> and quotation marks <span class="badge bg-secondary">""</span> for <b>direct speech</b>.
+		</div>-->
+		<h5>Содержимое этой страницы <b>не будет отправлено</b> SillyTavern в качестве промпта</h5>
+		<hr>
+		<li>Используйте переменную <b>{{char}}</b> для определения персонажа, и переменную <b>{{user}}</b> для пользователя;</li>
+		<li>Также используйте звёздочки ( <b>*</b> ) для внутренных мыслей или прямые кавычки для (<b>" "</b>) для прямой речи;</li>
+		<li>Для упрощения логики используйте <b><a href="https://platform.openai.com/docs/guides/prompt-engineering/tactic-use-delimiters-to-clearly-indicate-distinct-parts-of-the-input" target="_blank" style="text-decoration:none">XML-разметку</a></b>: блочную структуру написания по схеме <b>[&#60;tag&#62;</b>TEXT<b>&#60;/tag&#62;]</b>.</li>
+		<!--Use <b>{{char}}</b> variable for character's identification and <b>{{user}}</b> for user's, obviously;<br>Also use asterisks <i class="bi bi-asterisk"></i> to indicate inner thoughts and quotation marks <i class="bi bi-quote"></i> for direct speech.-->
+	</div>
+
+<h4><div class="mainheader">Основная информация</div></h4>
+
+	<form class="needs-validation" autocomplete="off" novalidate>
+
+		<div class="row" id="anchor-name-alt">
+			<div class="col-12 col-sm-4">
+				<span class="d-inline-block" tabindex="0" data-bs-toggle="popover">
+					<label for="edit-name-alt" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-user"></i> Имя</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+					<ul class="list-group list-group-flush d-none">
+						<li class="list-group-item">
+							<span class="fw-semibold"><i class="fa-solid fa-user"></i> Имя персонажа</span>
+							<p class="mb-0">Имя персонажа и значение для переменной <b>{{char}}</b></p>
+						</li>
+	
+					</ul>
+				</span>
+	
+				<input type="text" class="form-control" id="edit-name-alt" required>
+				<label for="edit-name-alt" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+				<div class="invalid-feedback">
+					Name is required by all formats
+				</div>
+			</div>
+
+			<div class="col-6 col-sm-4">
+				<span class="d-inline-block " tabindex="0" data-bs-toggle="popover">
+					<label for="edit-version-alt" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-code-branch"></i> Версия</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+					<ul class="list-group list-group-flush d-none">
+						<li class="list-group-item">
+							<span class="fw-semibold"><i class="fa-solid fa-code-branch"></i> Версия персонажа</span>
+							<p class="mb-0">Для отслеживания различных версий персонажа; может отображаться вместо поля <b>Комментарий</b> в списке персонажей</p>
+						</li>
+					</ul>
+				</span>
+
+				<input type="text" class="form-control" id="edit-version-alt">
+				<!--textarea class="form-control auto-size" id="edit-version-alt" rows="1"></textarea-->
+				<label for="edit-version-alt" class="form-label float-end mt-1 small text-secondary" hidden="hidden"></label>
+				<label for="edit-version-alt" class="form-label float-end mt-1 small text-secondary user-select-none header">Doesn't count</label>
+			</div>
+
+			<div class="col-6 col-sm-4">
+				<span class="d-inline-block " tabindex="0" data-bs-toggle="popover">
+					<a button id="button1" onclick="swapInputs_alt()">
+					<label for="edit-creator-alt-noselect" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-at"></i> Автор</label></a></button><i class="bi bi-info-circle fs-5 text-primary"></i>
+					<ul class="list-group list-group-flush d-none">
+						<li class="list-group-item">
+							<span class="fw-semibold"><i class="fa-solid fa-at"></i> Создатель</span>
+							<p class="mb-0">Героев нужно знать в/на лицо; по клику меняется на поле для ссылки на персональную страницу с ботами, например Rentry</p>
+						</li>
+					</ul>
+				</span>
+
+				<input type="text" class="form-control" id="edit-rentry-alt" style="display:none;" placeholder="https://rentry.co/mycoombots">
+				<input type="text" class="form-control" id="edit-creator-alt">
+				<!--textarea class="form-control auto-size" id="edit-creator-alt" rows="1"></textarea-->
+				<label for="edit-creator-alt" class="form-label float-end mt-1 small text-secondary" hidden="hidden"></label>
+				<label for="edit-creator-alt" class="form-label float-end mt-1 small text-secondary user-select-none header">Doesn't count</label>
+			</div>
+		</div>
+
+
+		<div class="mb-3" id="anchor-personality-alt">
+			<span class="d-inline-block sticky" tabindex="0" data-bs-toggle="popover">
+				<label for="edit-personality-alt" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-align-left"></i> Описание</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+				<ul class="list-group list-group-flush d-none">
+					<li class="list-group-item">
+						<span class="fw-semibold"><i class="fa-solid fa-align-left"></i> Описание персонажа</span>
+						<p class="mb-0">Основное и наиболее полное описание персонажа, которое формирует всю его личность</p>
+					</li>
+
+				</ul>
+			</span>
+
+			<textarea class="form-control auto-size" id="edit-personality-alt" rows="1"></textarea>
+			<label for="edit-personality-alt" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+		</div>
+
+
+
+
+		<div class="mb-3" id="anchor-greeting-alt">
+			<span class="d-inline-block sticky" tabindex="0" data-bs-toggle="popover">
+				<label for="edit-greeting-alt" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-hand-peace"></i> Первое сообщение</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+				<ul class="list-group list-group-flush d-none">
+					<li class="list-group-item">
+						<span class="fw-semibold"><i class="fa-solid fa-hand-peace"></i> Приветствие персонажа</span>
+						<p class="mb-0">Первое (приветственное) сообщение персонажа, которое формирует большую его поведения</p>
+					</li>
+				</ul>
+			</span>
+
+<div id="carouselExampleIndicators2" class="carousel carousel-dark slide">
+  <div class="carousel-indicators alt">
+    <button type="button" data-bs-target="#carouselExampleIndicators2" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
+    <button type="button" data-bs-target="#carouselExampleIndicators2" data-bs-slide-to="1" aria-label="Slide 2"></button>
+    <button type="button" data-bs-target="#carouselExampleIndicators2" data-bs-slide-to="2" aria-label="Slide 3"></button>
+    <button type="button" data-bs-target="#carouselExampleIndicators2" data-bs-slide-to="3" aria-label="Slide 4"></button>
+    <button type="button" data-bs-target="#carouselExampleIndicators2" data-bs-slide-to="4" aria-label="Slide 5"></button>
+  </div>
+
+  <div class="carousel-inner">
+    <div class="carousel-item active">
+
+		<!--<textarea class="form-control auto-size" id="edit-greeting" rows="1"></textarea>-->
+		<textarea class="form-control auto-size" id="edit-greeting-alt" rows="5" max-rows="11"></textarea>
+		<label for="edit-greeting-alt" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+
+    </div>
+    <div class="carousel-item">
+
+		<div class="mb-3">
+			<!--<textarea class="form-control auto-size" id="edit-greeting" rows="1"></textarea>-->
+			<textarea class="form-control auto-size" id="alternate-greeting-alt-1" rows="5" max-rows="11" placeholder="Альтернативное приветствие № 1"></textarea>
+			<label for="alternate-greeting-alt-1" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+		</div>
+
+    </div>
+
+    <div class="carousel-item">
+
+		<div class="mb-3">
+			<!--<textarea class="form-control auto-size" id="edit-greeting" rows="1"></textarea>-->
+			<textarea class="form-control auto-size" id="alternate-greeting-alt-2" rows="5" max-rows="11" placeholder="Альтернативное приветствие № 2"></textarea>
+			<label for="alternate-greeting-alt-2" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+		</div>
+
+    </div>
+
+    <div class="carousel-item">
+		<div class="mb-3">
+			<!--<textarea class="form-control auto-size" id="edit-greeting" rows="1"></textarea>-->
+			<textarea class="form-control auto-size" id="alternate-greeting-alt-3" rows="5" max-rows="11" placeholder="Альтернативное приветствие № 3"></textarea>
+			<label for="alternate-greeting-alt-3" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+		</div>
+
+    </div>
+
+    <div class="carousel-item">
+		<div class="mb-3">
+			<!--<textarea class="form-control auto-size" id="edit-greeting" rows="1"></textarea>-->
+			<textarea class="form-control auto-size" id="alternate-greeting-alt-4" rows="5" max-rows="11" placeholder="Альтернативное приветствие № 4"></textarea>
+			<label for="alternate-greeting-alt-4" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+		</div>
+
+    </div>
+  </div>
+
+  <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleIndicators2" data-bs-slide="prev">
+    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+    <span class="visually-hidden">Previous</span>
+  </button>
+  <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleIndicators2" data-bs-slide="next">
+    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+    <span class="visually-hidden">Next</span>
+  </button>
+</div>
+</div>
+
+
+
+												<div class="mb-3" id="anchor-summary-alt">
+													<span class="d-inline-block sticky" tabindex="0" data-bs-toggle="popover">
+														<label for="edit-summary-alt" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-list"></i> Характер</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+														<ul class="list-group list-group-flush d-none">
+															<li class="list-group-item">
+																<span class="fw-semibold"><i class="fa-solid fa-list"></i> Краткое описание</span>
+																<p class="mb-0">Перечисление или краткое описание основных черт характера персонажа</p>
+															</li>
+														</ul>
+													</span>
+
+													<textarea class="form-control auto-size" id="edit-summary-alt" rows="4"></textarea>
+													<label for="edit-summary-alt" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+												</div>
+
+												<div class="mb-3" id="anchor-scenario-alt">
+													<span class="d-inline-block sticky" tabindex="0" data-bs-toggle="popover">
+														<label for="edit-scenario-alt" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-scroll"></i> Сценарий</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+														<ul class="list-group list-group-flush d-none">
+															<li class="list-group-item">
+																<span class="fw-semibold"><i class="fa-solid fa-scroll"></i> Сценарий по умолчанию</span>
+																<p class="mb-0">Стандартные обстоятельства и контекст диалога</p>
+															</li>
+														</ul>
+													</span>
+
+													<textarea class="form-control auto-size" id="edit-scenario-alt" rows="4"></textarea>
+													<label for="edit-scenario-alt" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+												</div>
+
+
+												<div class="mb-3" id="anchor-examples-alt">
+													<span class="d-inline-block sticky" tabindex="0" data-bs-toggle="popover">
+														<label for="edit-examples-alt" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-comments"></i> Примеры сообщений</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+														<ul class="list-group list-group-flush d-none">
+															<li class="list-group-item">
+																<span class="fw-semibold"><i class="fa-solid fa-comments"></i> Стиль речи персонажа</span>
+																<p class="mb-0">Описывает манеру разговора персонажа; каждый пример должен начинаться с тега <b>&lt;START&gt;</b> на новой строке</p>
+															</li>
+														</ul>
+													</span>
+
+													<textarea class="form-control auto-size" id="edit-examples-alt" rows="4" placeholder="&lt;START&gt;"></textarea>
+													<!--<textarea class="form-control" id="edit-examples" rows="19"></textarea>-->
+													<label for="edit-examples-alt" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+												</div>
+
+	<div class="mb-3" id="anchor-character-note-alt">
+		<span class="d-inline-block sticky" tabindex="0" data-bs-toggle="popover">
+			<label for="edit-character-note-alt" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-paragraph"></i> Примечание персонажа</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+			<div class="sublabel"><label for="edit-character-note-depth-alt" class="form-label fw-semibold user-select-none header">Глубина:&nbsp;</label><input type="number" min="0" id="edit-character-note-depth-alt" placeholder="4"></div>
+			<ul class="list-group list-group-flush d-none">
+				<li class="list-group-item">
+					<span class="fw-semibold"><i class="fa-solid fa-paragraph"></i> Примечание персонажа</span>
+					<p class="mb-0">Текст, который будет вставлен в чате на указанную <b>Глубину</b></p>
+				</li>
+			</ul>
+		</span>
+
+		<textarea class="form-control auto-size" id="edit-character-note-alt" rows="1"></textarea>
+		<label for="edit-character-note-alt" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+		<!--span class="form-label float-end mt-1 small text-secondary">Doesn't count</span-->
+	</div>
+
+<br>
+<hr>
+<h4><div class="mainheader">Дополнительная информация и промпты</div></h4>
+
+	<div class="mb-3" id="anchor-system-prompt-alt">
+		<span class="d-inline-block sticky" tabindex="0" data-bs-toggle="popover">
+			<label for="edit-system-prompt-alt" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-hashtag"></i> Основной промпт</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+			<label for="edit-system-prompt-alt" class="form-label fw-semibold"></label>
+			<ul class="list-group list-group-flush d-none">
+				<li class="list-group-item">
+					<span class="fw-semibold"><i class="fa-solid fa-hashtag"></i> Альтернативный основной промпт</span>
+					<p class="mb-0">Уникальный основной промпт (<b>Main Prompt</b>) для персонажа, который заменит основной промпт по умолчанию</p>
+				</li>
+			</ul>
+		</span>
+
+		<textarea class="form-control auto-size" id="edit-system-prompt-alt" rows="1"></textarea>
+		<label for="edit-system-prompt-alt" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+		<!--span class="form-label float-end mt-1 small text-secondary">Doesn't count</span-->
+	</div>
+
+	<div class="mb-3" id="anchor-post-history-instructions-alt">
+		<span class="d-inline-block sticky" tabindex="0" data-bs-toggle="popover">
+			<label for="edit-post-history-instructions-alt" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-hashtag"></i> Джейлбрейк</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+			<label for="edit-post-history-instructions-alt" class="form-label fw-semibold"></label>
+			<ul class="list-group list-group-flush d-none">
+				<li class="list-group-item">
+					<span class="fw-semibold"><i class="fa-solid fa-hashtag"></i> Альтернативный джейлбрейк</span>
+					<p class="mb-0">Уникальный джейлбрейк (<b>Jailbreak</b>) для персонажа, который заменит джейл по умолчанию</p>
+				</li>
+			</ul>
+		</span>
+
+		<textarea class="form-control auto-size" id="edit-post-history-instructions-alt" rows="1"></textarea>
+		<label for="edit-post-history-instructions-alt" class="form-label float-end mt-1 small text-secondary user-select-none header"></label>
+		<!--span class="form-label float-end mt-1 small text-secondary">Doesn't count</span-->
+	</div>
+
+
+
+
+
+
+
+
+
+												<div class="mb-3">
+													<span class="d-inline-block sticky" tabindex="0" data-bs-toggle="popover">
+														<label for="edit-comment-alt" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-quote-left"></i> Комментарий</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+														<ul class="list-group list-group-flush d-none">
+															<li class="list-group-item">
+																<span class="fw-semibold"><i class="fa-solid fa-quote-left"></i> Комментарий к персонажу</span>
+																<p class="mb-0">Заметки от автора; может отображаться вместо поля <b>Версия</b> в списке песонажей</p>
+															</li>
+														</ul>
+													</span>
+
+													<textarea class="form-control auto-size" id="edit-comment-alt" rows="1"></textarea>
+													<label for="edit-comment-alt" class="form-label float-end mt-1 small text-secondary" hidden="hidden"></label>
+													<label for="edit-comment-alt" class="form-label float-end mt-1 small text-secondary user-select-none header">Doesn't count</label>
+												</div>
+
+												<div class="mb-3">
+													<span class="d-inline-block" tabindex="0" data-bs-toggle="popover">
+														<label for="edit-tags-alt" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-tags"></i> Теги</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+														<ul class="list-group list-group-flush d-none">
+															<li class="list-group-item">
+																<span class="fw-semibold"><i class="fa-solid fa-tags"></i> Теги персонажа</span>
+																<p class="mb-0">Перечень тегов, разделённых запятыми</p>
+															</li>
+														</ul>
+													</span>
+
+													<!--<textarea class="form-control auto-size" id="edit-tags" rows="1"></textarea>-->
+													<input type="text" class="form-control" id="edit-tags-alt">
+													<label for="edit-tags-alt" class="form-label float-end mt-1 small text-secondary" hidden="hidden"></label>
+													<label for="edit-tags-alt" class="form-label float-end mt-1 small text-secondary user-select-none header">Doesn't count</label>
+													<!--<ul id="tags"></ul>-->
+												</div>
+
+	<div class="mb-3">
+		<span class="d-inline-block sticky" tabindex="0" data-bs-toggle="popover">
+			<label for="edit-talkativeness-alt" class="form-label fw-semibold user-select-none header"><i class="fa-solid fa-wave-square"></i> Разговорчивость</label><i class="bi bi-info-circle fs-5 text-primary"></i>
+			<div class="sublabel"><label for="edit-talkativeness-alt" class="form-label fw-semibold user-select-none header">Частота:&nbsp;</label><text id="spanslider-alt" style="inline">50%</text></div>
+			<ul class="list-group list-group-flush d-none">
+				<li class="list-group-item">
+					<span class="fw-semibold"><i class="fa-solid fa-wave-square"></i> Разговорчивость</span>
+					<p class="mb-0">Определяет как часто персонаж будет говорить в <b>Групповых чатах</b></p>
+				</li>
+			</ul>
+		</span>
+
+		<div class="slidecontainer">
+			<input type="range" min="0.00" max="1.00" step="0.05" value="0.50" id="edit-talkativeness-alt">
+		</div>
+		<label for="edit-talkativeness-alt" class="form-label float-end mt-1 small text-secondary" hidden="hidden"></label>
+		<span class="form-label float-end mt-1 small text-secondary user-select-none header"></span>
+	</div>
+
+<script>
+    document.getElementById("edit-talkativeness-alt").oninput = function() {
+        const inputValue2 = Number(this.value);
+        const formattedValue2 = Math.round(inputValue2 * 100) + "%";
+        document.getElementById("spanslider-alt").innerHTML = formattedValue2;
+    }
+
+    // Set initial value on page load
+    const initialValue2 = Number(document.getElementById("edit-talkativeness-alt").value);
+    const initialFormattedValue2 = Math.round(initialValue2 * 100) + "%";
+    document.getElementById("spanslider-alt").innerHTML = initialFormattedValue2;
+</script>
+
+		<div class="clearfix"></div>
+		<span class="float-end mt-1 small fw-bold text-secondary user-select-none header" id="total-tokens-alt"></span>
+
+								</div>
+							</div>
+					</div>
+				</div>
+						</div>
+						</div>
+					</div>
+					</div>
+		</form>
+
+
+					<div class="accordion-item">
+						<h2 class="accordion-header">
+							<button class="accordion-button collapsed shadow-none fs-5" type="button" data-bs-toggle="collapse" data-bs-target="#accordion-export" disabled autocomplete="off">
+								<i class="bi bi-box-arrow-down flex-shrink-0 me-2"></i> Export
+							</button>
+						</h2>
+
+						<div id="accordion-export" class="accordion-collapse collapse" data-bs-parent="#accordion">
+							<div class="n-body text-center">
+								<div class="container">
+									<div class="row py-3 px-5">
+										<div id="export-image" class="col-12 col-lg border-end-0 border-end-lg border-bottom border-bottom-lg-0 pb-4 pb-lg-0 mb-4 mb-lg-0 d-none">
+											<h4>Export as Image</h4>
+											<button id="export-png" type="button" class="btn btn-outline-primary my-3"><i class="bi bi-download flex-shrink-0 me-1"></i> Download as Character Card Image</button>
+											<p>Compatible with <a href="https://github.com/TavernAI/TavernAI" target="_blank">SillyTavern</a> / <a href="https://github.com/oobabooga/text-generation-webui" target="_blank">Text Generation</a></p>
+
+											<div class="mt-4 small text-body-secondary" style="display: none">
+												Character Cards are PNG images with embedded JSON
+											</div>
+										</div>
+
+										<div class="col-12 col-lg">
+											<h4>Export as JSON</h4>
+											<button id="export-json" type="button" class="btn btn-outline-primary my-3"><i class="bi bi-download flex-shrink-0 me-1"></i> Download as Character JSON</button>
+											<p>Compatible with <a href="https://github.com/PygmalionAI/gradio-ui" target="_blank">Pygmalion</a> / <a href="https://github.com/oobabooga/text-generation-webui" target="_blank">Text Generation</a> / <a href="https://github.com/TavernAI/TavernAI" target="_blank">TavernAI</a></p>
+
+											<div class="mt-4 small text-body-secondary" style="display: none">
+												Having problems with the Hybrid JSON?<br>
+												<a href="" id="export-json-gradio" class="link-secondary">Download as Pygmalion / Text Generation JSON</a><br>
+												<a href="" id="export-json-tavern" class="link-secondary">Download as TavernAI JSON</a>
+											</div>
+
+											<!--<div class="mt-4 small text-danger">
+												There is currently a bug in TavernAI which stops it from importing all data from JSON files! You are strongly encouraged to import your character as a Character Card image to avoid the issue
+											</div>-->
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</main>
+
+	<footer class="footer mt-auto p-3 bg-body">
+		<div class="container">
+			<div class="row text-body-secondary user-select-none">
+				<div class="col">
+					<!--<span data-bs-toggle="tooltip" data-bs-title="Get in contact on Discord for any suggestions or help!">Made with &#128166; by <code class="user-select-all">Zoltan#8287</code>, forked by <code class="user-select-all">AVAKSon#0498</code> and modified by <code class="user-select-all">neptunebooty</code></span>-->
+
+					<span data-bs-toggle="tooltip" data-bs-title="Get in contact on Discord for any suggestions or help!">Made with &#128166; by <code class="user-select-all">Zoltan#8287</code>, forked by <code class="user-select-all">AVAKSon#0498</code> and modified by <code class="user-select-all">neptunebooty</code></span>
+					</div>
+
+					<!--<span data-bs-toggle="tooltip1" data-bs-title="Get in contact on Discord for any suggestions or help!">Made with &#128166; by <code class="user-select-all">Zoltan#8287</code></span>
+					<span data-bs-toggle="tooltip2" data-bs-title="Get in contact on Discord for any suggestions or help!">, forked by <code class="user-select-all">AVAKSon#0498</code></span>
+					<span data-bs-toggle="tooltip3" data-bs-title="Get in contact on Discord for any suggestions or help!">then modified and finalized by <code class="user-select-all">neptunebooty</code></span>
+					</div>-->
+
+					<!--Made with &#128166; by
+					<code class="user-select-all"><span data-bs-toggle="tooltip" title="Sooqa">Zoltan#8287</span></code>
+						and forked by
+					<code class="user-select-all"><span data-bs-toggle="tooltip" title="Pidor">neptunebooty</span></code>
+				</div>-->
+				<div class="col text-end">
+					Version 0.7
+				</div>
+			</div>
+		</div>
+	</footer>
+
+	<div id="error-modal" class="modal fade" tabindex="-1" aria-labelledby="error-modal-heading" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered modal-lg">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h1 id="error-modal-heading" class="modal-title fs-5 text-danger"><i class="bi bi-exclamation-octagon"></i> An Error has Occurred</h1>
+				</div>
+
+				<div class="modal-body">
+					<p>An unexpected error has occurred, sorry!</p>
+					<p>This tool is still in development and you can help improve it by sending the error message below and your file (if applicable) to <code class="user-select-all">Zoltan#8287</code> on Discord or by reporting it on <a href="https://github.com/neptunebooty/character-editor" target="_blank">GitHub</a>.</p>
+					<pre class="mb-0 p-3 border bg-body-secondary rounded"><code id="error-message" class="user-select-all"></code></pre>
+				</div>
+
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div id="warning-modal" class="modal fade" tabindex="-1" aria-labelledby="warning-modal-heading" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h1 id="warning-modal-heading" class="modal-title fs-5 text-danger"><i class="bi bi-exclamation-octagon"></i> <span id="warning-modal-title"></span></h1>
+				</div>
+
+				<div class="modal-body">
+					<p id="warning-modal-body" class="m-0"></p>
+
+					<div id="warning-modal-collapse" class="collapse">
+						<hr>
+						<p>If you think you have mistakenly received this warning, please send the error message below and your file to <code class="user-select-all">Zoltan#8287</code> on Discord or report it on <a href="https://github.com/ZoltanAI/character-editor" target="_blank">GitHub</a>.</p>
+						<pre class="mb-0 p-3 border bg-body-secondary rounded"><code id="warning-modal-details" class="user-select-all"></code></pre>
+					</div>
+				</div>
+
+				<div class="modal-footer">
+					<button type="button" class="btn btn-outline-secondary me-auto" data-bs-toggle="collapse" data-bs-target="#warning-modal-collapse" aria-expanded="false" aria-controls="warning-modal-collapse">
+						<i class="bi bi-chevron-expand"></i> Details
+					</button>
+
+					<button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!--<script src="https://cdn.jsdelivr.net/combine/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js,npm/crc-32@1.2,gh/syonfox/GPT-3-Encoder@c3c2e2533a15645d812b5e6fcb00b75b74718161/browser.min.js"></script>-->
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/crc-32@1.2.2/crc32.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/@syonfox/gpt-3-encoder@1.4.0-rc5/browser.min.js"></script>
+	<!--script src="browser.min.js"></script-->
+
+	<!-- PRISM SCRIPTS
+	<script src="https://blissfuljs.com/bliss.shy.min.js"></script>
+	<script src="https://prismjs.com/prism.js"></script>
+	<script src="https://prismjs.com/plugins/line-numbers/prism-line-numbers.js"></script>
+	<script src="js/prism-live.js"></script>
+	<script src="js/prism-live-markup.js"></script>
+	<script src="js/prism-live-css.js"></script>
+	<script src="js/prism-live-javascript.js"></script>
+	<script src="js/index.js"></script>-->
+
+	<!--<script>
+		const dropArea = document.getElementById("drop-area");
+		const inputFile = document.getElementById("input-file");
+		const imageView = document.getElementById("img-view");
+
+		inputFile.addEventListener("change", uploadlmage);
+
+		function uploadlmage(){
+			let imgLink = URL.createObjectURL(inputFi1e.fi1es[0]);
+			imageView.style.backgroundImage = `url(${imgLink})`;
+			imageView.textContent = "";
+			imageView. style. border = 0;
+	</script>-->
+	<script>
+		'use strict';
+		//fixer for the page
+
+		const APP = "AICharED by neptunebooty (Zoltan's AI Character Editor)";
+		const VER = "0.7";
+
+		Element.prototype.show = function () {
+			this.classList.remove('d-none');
+		};
+		Element.prototype.hide = function () {
+			this.classList.add('d-none');
+		};
+
+		const JsonFormats = {
+			TextGenerationCharacter: 'Text Generation Character',
+			//TavernCharacter: 'TavernAI Character',
+			CharacterCardv1: '<a href="https://github.com/malfoyslastname/character-card-spec-v2/blob/main/spec_v1.md" target="_blank">Character Card v1</a>',
+			CharacterCardv2: '<a href="https://github.com/malfoyslastname/character-card-spec-v2/blob/main/spec_v2.md" target="_blank">Character Card v2<a>',
+			//KoboldCharacter: 'KoboldAI Character',
+			//CaiCharacter: 'CharacterAI Character',
+			//CaiHistory: 'CharacterAI History'
+		};
+
+		class JsonParseError extends Error {
+			#json;
+
+			get json() {
+				return this.#json;
+			}
+
+			constructor(message, json, options) {
+				super(message, options);
+
+				this.name = 'JSON Parse Error';
+				this.#json = json;
+			}
+		}
+
+		class JsonUnknownFormatError extends Error {
+			#json;
+
+			get json() {
+				return this.#json;
+			}
+
+			constructor(message, json, options) {
+				super(message, options);
+
+				this.name = 'Unknown JSON Format Error';
+				this.#json = json;
+			}
+		}
+
+		class PngDecodeError extends Error {
+			constructor(message, options) {
+				super(message, options);
+
+				this.name = 'PNG Decode Error';
+			}
+		}
+
+		class PngFormatError extends Error {
+			constructor(message, options) {
+				super(message, options);
+
+				this.name = 'PNG Format Error';
+			}
+		}
+
+		class PngMissingCharacterError extends Error {
+			constructor(message, options) {
+				super(message, options);
+
+				this.name = 'PNG Missing Character Error';
+			}
+		}
+
+		class PngInvalidCharacterError extends Error {
+			constructor(message, options) {
+				super(message, options);
+
+				this.name = 'PNG Invalid Character Error';
+			}
+		}
+
+		class Exception {
+			static #modal = new bootstrap.Modal('#error-modal', {
+				backdrop: 'static'
+			});
+
+			static set #message(value) {
+				document.getElementById('error-message').innerText = value;
+			}
+
+			static format(ex, indent = 0) {
+				let message = `${' '.repeat(indent)}${ex.name ?? 'Error'}: ${ex.message}`;
+
+				if (ex.lineNumber) {
+					message += ` (${ex.lineNumber}`;
+
+					if (ex.columnNumber) message += `:${ex.columnNumber}`;
+
+					message += ')';
+				}
+
+				message += '\n';
+
+				if (ex.cause) message += this.format(ex.cause, indent + 2);
+
+				if (ex instanceof JsonParseError && ex.json) message += `Source: "${ex.json}"\n`;
+				if (ex instanceof JsonUnknownFormatError && ex.json) message += `Source: "${Format.stringify(ex.json)}"\n`;
+
+				if (ex instanceof TypeError && ex.stack && indent == 0) message += `\n${ex.stack}`;
+
+				return message;
+			}
+
+			static show(ex) {
+				console.error(ex);
+
+				this.#message = `${APP} v${VER}\n${this.format(ex)}`.trim();
+
+				this.#modal.show();
+			}
+		}
+
+		class Warning {
+			static #modal = new bootstrap.Modal('#warning-modal', {
+				backdrop: 'static'
+			});
+
+			static set #title(value) {
+				document.getElementById('warning-modal-title').innerText = value;
+			}
+
+			static set #message(value) {
+				document.getElementById('warning-modal-body').innerHTML = value;
+			}
+
+			static set #details(value) {
+				document.getElementById('warning-modal-details').innerText = value;
+			}
+
+			static show(title, message, ex) {
+				console.warn(ex);
+
+				document.getElementById('warning-modal-collapse').classList.remove('show');
+
+				this.#title = title;
+				this.#message = message;
+				this.#details = Exception.format(ex);
+
+				this.#modal.show();
+			}
+		}
+
+		class Format {
+			static bytes(bytes, decimals = 2) {
+				if (bytes == 1) return '0 bytes';
+				if (bytes == 1) return '1 byte';
+
+				const k = 1024;
+				const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+				return parseFloat((bytes / Math.pow(k, i)).toFixed(decimals)) + ' ' + ['bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'][i];
+				//return parseFloat((bytes / Math.pow(k, i)).toFixed(decimals)) + ' ' + ['bytes', 'Kbyte', 'Mbyte', 'Gbyte', 'Tbyte', 'Pbyte', 'Ebyte', 'Zbyte', 'Ybyte'][i];
+			}
+
+			static dateTime(date) {
+				return new Intl.DateTimeFormat(undefined, {
+					dateStyle: 'long',
+					timeStyle: 'medium',
+					hour12: false
+				}).format(date);
+			}
+
+			static ago(date) {
+				const DIVISIONS = [
+					{ amount: 60, name: 'seconds' },
+					{ amount: 60, name: 'minutes' },
+					{ amount: 24, name: 'hours' },
+					{ amount: 7, name: 'days' },
+					{ amount: 4.34524, name: 'weeks' },
+					{ amount: 12, name: 'months' },
+					{ amount: Number.POSITIVE_INFINITY, name: 'years' }
+				];
+
+				let duration = (date - new Date()) / 1000;
+
+				for (let i = 0; i <= DIVISIONS.length; i++) {
+					const division = DIVISIONS[i];
+
+					if (Math.abs(duration) < division.amount) {
+						return Format.capitalize(new Intl.RelativeTimeFormat(undefined, {
+							numeric: 'auto'
+						}).format(Math.round(duration), division.name));
+					}
+
+					duration /= division.amount;
+				}
+			}
+
+			static ratio(width, height) {
+				return height == 0 ? width : Format.ratio(height, width % height);
+
+			}
+
+			static capitalize(text) {
+				return text && text.charAt(0).toUpperCase() + text.slice(1);
+			}
+
+			static pluralize(count, singular, plural) {
+				switch (new Intl.PluralRules('en').select(count)) {
+					case 'one':
+						return singular;
+					default:
+						return plural;
+				}
+			}
+
+			static stringify(object) {
+				return JSON.stringify(object, null, '\t');
+			}
+		}
+
+		class Png {
+			static #uint8 = new Uint8Array(4);
+			static #int32 = new Int32Array(this.#uint8.buffer);
+			static #uint32 = new Uint32Array(this.#uint8.buffer);
+
+			// Parse and extract PNG tEXt chunk
+			static #decodeText(data) {
+				let naming = true;
+				let keyword = '';
+				let text = '';
+
+				for (let index = 0; index < data.length; index++) {
+					const code = data[index];
+
+					if (naming) {
+						if (code) {
+							keyword += String.fromCharCode(code);
+						} else {
+							naming = false;
+						}
+					} else {
+						if (code) {
+							text += String.fromCharCode(code);
+						} else {
+							throw new PngDecodeError('Invalid NULL character found in PNG tEXt chunk');
+						}
+					}
+				}
+
+				return {
+					keyword,
+					text
+				};
+			}
+
+			// Encode value to PNG tEXt chunk
+			static #encodeText(keyword, text) {
+				keyword = String(keyword);
+				text = String(text);
+
+				if (!/^[\x00-\xFF]+$/.test(keyword) || !/^[\x00-\xFF]+$/.test(text)) throw new PngDecodeError('Invalid character in PNG tEXt chunk');
+				if (keyword.length > 79) throw new PngDecodeError('Keyword "' + keyword + '" is longer than the 79 character limit');
+
+				const data = new Uint8Array(keyword.length + text.length + 1);
+				let idx = 0;
+				let code;
+
+				for (let i = 0; i < keyword.length; i++) {
+					if (!(code = keyword.charCodeAt(i))) throw new PngDecodeError('0x00 character is not permitted in tEXt keywords');
+					data[idx++] = code;
+				}
+
+				data[idx++] = 0;
+
+				for (let i = 0; i < text.length; i++) {
+					if (!(code = text.charCodeAt(i))) throw new PngDecodeError('0x00 character is not permitted in tEXt text');
+					data[idx++] = code;
+				}
+
+				return data;
+			}
+
+			// Read PNG format chunk
+			static #readChunk(data, idx) {
+				// Read length field
+				this.#uint8[3] = data[idx++];
+				this.#uint8[2] = data[idx++];
+				this.#uint8[1] = data[idx++];
+				this.#uint8[0] = data[idx++];
+				const length = this.#uint32[0];
+
+				// Read chunk type field
+				const chunkType = String.fromCharCode(data[idx++]) + String.fromCharCode(data[idx++]) + String.fromCharCode(data[idx++]) + String.fromCharCode(data[idx++]);
+
+				// Read chunk data field
+				const chunkData = data.slice(idx, idx + length);
+				idx += length;
+
+				// Read CRC field
+				this.#uint8[3] = data[idx++];
+				this.#uint8[2] = data[idx++];
+				this.#uint8[1] = data[idx++];
+				this.#uint8[0] = data[idx++];
+				const crc = this.#int32[0];
+
+				// Compare stored CRC to actual
+				if (crc !== CRC32.buf(chunkData, CRC32.str(chunkType))) throw new PngDecodeError('CRC for "' + chunkType + '" header is invalid, file is likely corrupted');
+
+				return {
+					type: chunkType,
+					data: chunkData,
+					crc
+				};
+			}
+
+			// Read PNG file and extract chunks
+			static #readChunks(data) {
+				if (data[0] !== 0x89 || data[1] !== 0x50 || data[2] !== 0x4E || data[3] !== 0x47 || data[4] !== 0x0D || data[5] !== 0x0A || data[6] !== 0x1A || data[7] !== 0x0A) throw new PngFormatError('Invalid PNG header');
+
+				const chunks = [];
+
+				let idx = 8; // Skip signature
+				while (idx < data.length) {
+					const chunk = Png.#readChunk(data, idx);
+
+					if (!chunks.length && chunk.type !== 'IHDR') throw new PngDecodeError('PNG missing IHDR header');
+
+					chunks.push(chunk);
+					idx += 4 + 4 + chunk.data.length + 4; // Skip length, chunk type, chunk data, CRC
+				}
+
+				if (chunks.length === 0) throw new PngDecodeError('PNG ended prematurely, no chunks');
+				if (chunks[chunks.length - 1].type !== 'IEND') throw new PngDecodeError('PNG ended prematurely, missing IEND header');
+
+				return chunks;
+			}
+
+			// Write PNG file from chunks
+			static #encodeChunks(chunks) {
+				const output = new Uint8Array(chunks.reduce((a, c) => a + 4 + 4 + c.data.length + 4, 8)); // Signature + chunks (length, chunk type, chunk data, CRC)
+
+				// Signature
+				output[0] = 0x89;
+				output[1] = 0x50;
+				output[2] = 0x4E;
+				output[3] = 0x47;
+				output[4] = 0x0D;
+				output[5] = 0x0A;
+				output[6] = 0x1A;
+				output[7] = 0x0A;
+
+				let idx = 8; // After signature
+
+				chunks.forEach(c => {
+					// Write length field
+					this.#uint32[0] = c.data.length;
+					output[idx++] = this.#uint8[3];
+					output[idx++] = this.#uint8[2];
+					output[idx++] = this.#uint8[1];
+					output[idx++] = this.#uint8[0];
+
+					// Write chunk type field
+					output[idx++] = c.type.charCodeAt(0);
+					output[idx++] = c.type.charCodeAt(1);
+					output[idx++] = c.type.charCodeAt(2);
+					output[idx++] = c.type.charCodeAt(3);
+
+					// Write chunk data field
+					for (let i = 0; i < c.data.length;) {
+						output[idx++] = c.data[i++];
+					}
+
+					// Write CRC field
+					this.#int32[0] = c.crc || CRC32.buf(c.data, CRC32.str(c.type));
+					output[idx++] = this.#uint8[3];
+					output[idx++] = this.#uint8[2];
+					output[idx++] = this.#uint8[1];
+					output[idx++] = this.#uint8[0];
+				});
+
+				return output;
+			}
+
+			// Parse PNG file and return decoded UTF8 "chara" base64 tEXt chunk value
+			static Parse(arrayBuffer) {
+				const chunks = Png.#readChunks(new Uint8Array(arrayBuffer));
+
+				const text = chunks.filter(c => c.type === 'tEXt').map(c => Png.#decodeText(c.data));
+				if (text.length < 1) throw new PngMissingCharacterError('No PNG text fields found in file');
+
+				const chara = text.find(t => t.keyword === 'chara');
+				if (chara === undefined) throw new PngMissingCharacterError('No PNG text field named "chara" found in file');
+
+				try {
+					return new TextDecoder().decode(Uint8Array.from(atob(chara.text), c => c.charCodeAt(0)));
+				} catch (e) {
+					throw new PngInvalidCharacterError('Unable to parse "chara" field as base64', {
+						cause: e
+					});
+				}
+			}
+
+			// Parse PNG file, strip all tEXt chunks, add encoded UTF8 "chara" base64 tEXt chunk and return PNG file
+			static Generate(arrayBuffer, text) {
+				// Read PNG and remove all tEXt chunks, as TavernAI does
+				// NOTE: TavernAI blindly reads first tEXt chunk, rather than searching for one named "chara"
+				const chunks = Png.#readChunks(new Uint8Array(arrayBuffer)).filter(c => c.type !== 'tEXt');
+
+				// Insert new "chara" tEXt chunk just before IEND chunk, as TavernAI does
+				// NOTE: Some programs won't see the tEXt chunk if its after any IDAT chunks
+				chunks.splice(-1, 0, {
+					type: 'tEXt',
+					data: Png.#encodeText('chara', btoa(new TextEncoder().encode(text).reduce((a, c) => a + String.fromCharCode(c), '')))
+				});
+
+				return Png.#encodeChunks(chunks);
+			}
+		}
+
+		class Loader {
+			// Create image element and wait for it to load
+			static image(src) {
+				return new Promise((resolve, reject) => {
+					const image = new Image();
+					image.onload = () => resolve(image);
+					image.onerror = reject;
+					image.crossOrigin = 'anonymous';
+					image.src = src;
+				});
+			}
+
+			// Parse JSON and wrap any error
+			static #json(text) {
+				try {
+					return JSON.parse(text);
+				} catch (ex) {
+					throw new JsonParseError('Unable to parse', text, {
+						cause: ex
+					});
+				}
+			}
+
+			static async parse(file) {
+				let json = null;
+				let image = null;
+
+				if (file.type === 'application/json') {
+					json = this.#json(await file.text());
+				} else if (file.type === 'image/png') {
+					const text = Png.Parse(await file.arrayBuffer());
+
+					try {
+						json = this.#json(text);
+					} catch (ex) {
+						if (!(ex instanceof JsonParseError)) throw ex;
+
+						throw new PngInvalidCharacterError('Unable to parse "chara" field as JSON', {
+							cause: ex
+						});
+					}
+
+					image = await this.image(URL.createObjectURL(file));
+				}
+
+				return {
+					json,
+					image
+				};
+			}
+		}
+
+		class Popovers {
+			constructor() {
+				document.querySelectorAll('[data-bs-toggle="popover"]').forEach(el => new bootstrap.Popover(el, {
+					trigger: 'hover',
+					html: true,
+					offset: [0, 15],
+					content: () => {
+						const ul = el.querySelector(':scope > ul').cloneNode(true);
+						ul.show();
+						return ul.outerHTML;
+					}
+				}));
+			}
+		}
+
+		class Tooltips {
+			static #imageDetails;
+			static #fileDate;
+			static #footer;
+
+			static get imageDetails() {
+				return this.#imageDetails;
+			}
+
+			static get fileDate() {
+				return this.#fileDate;
+			}
+
+			static get footer() {
+				return this.#footer;
+			}
+
+			static #create(el) {
+				return new bootstrap.Tooltip(el, {
+					html: true
+				});
+			}
+
+			constructor() {
+				const elements = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+
+				// TODO: Only get required tooltips
+				Tooltips.#imageDetails = Tooltips.#create(elements[0]);
+				Tooltips.#fileDate = Tooltips.#create(elements[1]);
+				Tooltips.#footer = Tooltips.#create(elements[2]);
+			}
+		}
+
+		class Accordions {
+			static #load;
+			static #edit;
+			static #export;
+
+			#opening = false;
+
+			static get load() {
+				return this.#load;
+			}
+
+			static get edit() {
+				return this.#edit;
+			}
+
+			static get export() {
+				return this.#export;
+			}
+
+			static #create(el) {
+				return new bootstrap.Collapse(el, {
+					toggle: false
+				});
+			}
+
+			static lock(lock = true) {
+				document.querySelectorAll('.accordion-header button').forEach(el => {
+					el.disabled = lock;
+				});
+			}
+
+			constructor() {
+				const elements = document.querySelectorAll('.accordion-collapse');
+
+				Accordions.#load = Accordions.#create(elements[0]);
+				Accordions.#edit = Accordions.#create(elements[1]);
+				Accordions.#export = Accordions.#create(elements[2]);
+
+				elements.forEach(el => {
+					el.addEventListener('hide.bs.collapse', e => {
+						if (!this.#opening) {
+							e.preventDefault();
+							e.stopPropagation();
+						} else {
+							this.#opening = false;
+						}
+					});
+
+					el.addEventListener('show.bs.collapse', e => {
+						this.#opening = true;
+					});
+				});
+			}
+		}
+
+		class Tokenizer {
+			static count(str) {
+				return gpt3encoder.countTokens(str || '');
+			}
+
+			static update(el) {
+				if (el === undefined) {
+					document.querySelectorAll('input[type=text], textarea').forEach(el => {
+						this.update(el);
+
+						//const total = gpt3encoder.countTokens(Edit.name + Edit.personality + Edit.greeting + Edit.summary + Edit.scenario + Edit.examples);
+						//document.getElementById('edit-tokens').innerText = `${total.toLocaleString()} total ${Format.pluralize(total, 'token', 'tokens')}`;
+
+						const name_token = gpt3encoder.countTokens(Edit.name);
+						const personality_token = gpt3encoder.countTokens(Edit.personality);
+						const greeting_token = gpt3encoder.countTokens(Edit.greeting);
+						const summary_token = gpt3encoder.countTokens(Edit.summary);
+						const scenario_token = gpt3encoder.countTokens(Edit.scenario);
+						const examples_token = gpt3encoder.countTokens(Edit.examples);
+						const character_note_token = gpt3encoder.countTokens(Edit.character_note);
+
+						const system_prompt_token = gpt3encoder.countTokens(Edit.system_prompt);
+						const post_history_instructions_token = gpt3encoder.countTokens(Edit.post_history_instructions);
+						//const total = gpt3encoder.countTokens(Edit.name + Edit.personality + Edit.greeting + Edit.summary + Edit.scenario + Edit.examples);
+						const total = name_token + personality_token + greeting_token + summary_token + scenario_token + examples_token + character_note_token + system_prompt_token + post_history_instructions_token;
+						const prompts = system_prompt_token + post_history_instructions_token;
+						//document.getElementById('edit-tokens').innerHTML = `<strong>${total.toLocaleString()} ${Format.pluralize(total, 'token', 'tokens')} total:</strong><table><tr>
+						document.getElementById('edit-tokens').innerHTML = `
+
+<table class="table table-sm">
+<!--<caption><div class="text-center fs-2"><b>${total.toLocaleString()} ${Format.pluralize(total, 'token', 'tokens')} total</b></div></caption>
+  <thead>
+    <tr class="table">
+      <th scope="col">Category</th>
+      <th scope="col">Tokens</th>
+    </tr>
+  </thead>-->
+  <tbody>
+    <tr class="table">
+      <!--<th scope="row"><a href="#anchor-name" style="color:var(--bs-body-color)">Name</a></th>-->
+      <th scope="row"><a href="#anchor-name" style="text-decoration:none;">Name</a></th>
+      <td>${name_token.toLocaleString()}</td>
+    </tr>
+    <tr class="table">
+      <th scope="row"><a href="#anchor-personality" style="text-decoration:none;">Description</a></th>
+      <td>${personality_token.toLocaleString()}</td>
+    </tr>
+    <tr class="table">
+      <th scope="row"><a href="#anchor-greeting" style="text-decoration:none;">First Message</a></th>
+      <td colspan="2">${greeting_token.toLocaleString()}</td>
+    </tr>
+    <tr class="table">
+    	<th scope="row"><a href="#anchor-summary" style="text-decoration:none;">Summary</a></th>
+      <td colspan="2">${summary_token.toLocaleString()}</td>
+    </tr>
+    <tr class="table">
+    	<th scope="row"><a href="#anchor-scenario" style="text-decoration:none;">Scenario</a></th>
+      <td colspan="2">${scenario_token.toLocaleString()}</td>
+    </tr>
+    <tr class="table">
+    	<th scope="row"><a href="#anchor-examples" style="text-decoration:none;">Examples</a></th>
+      <td colspan="2">${examples_token.toLocaleString()}</td>
+    </tr>
+    <tr class="table">
+    	<th scope="row"><a href="#anchor-character-note" style="text-decoration:none;">Character's Note</a></th>
+      <td colspan="2">${character_note_token.toLocaleString()}</td>
+    </tr>
+    <tr class="table">
+    	<th scope="row"><a href="#anchor-system-prompt" style="text-decoration:none;">Prompt Overrides</a></th>
+      <td colspan="2">${prompts.toLocaleString()}</td>
+    </tr>
+  </tbody>
+</table>
+<div class="text-center fs-5"><b>${total.toLocaleString()} ${Format.pluralize(total, 'token', 'tokens')} total</b></div>`;
+			});
+
+					return;
+				}
+
+				const str = el.value.trim();
+				const tokens = gpt3encoder.countTokens(str);
+
+				// TODO: Improve
+				let nextSibling = el.nextSibling;
+				while (nextSibling && nextSibling.nodeType != 1) {
+					nextSibling = nextSibling.nextSibling;
+				}
+
+				nextSibling.innerHTML = `${str.length.toLocaleString()} ${Format.pluralize(str.length, 'character', 'characters')}, ${tokens.toLocaleString()} ${Format.pluralize(tokens, 'token', 'tokens')}`;
+
+						const name_token = gpt3encoder.countTokens(Edit.name);
+						const personality_token = gpt3encoder.countTokens(Edit.personality);
+						const greeting_token = gpt3encoder.countTokens(Edit.greeting);
+						const summary_token = gpt3encoder.countTokens(Edit.summary);
+						const scenario_token = gpt3encoder.countTokens(Edit.scenario);
+						const examples_token = gpt3encoder.countTokens(Edit.examples);
+						const character_note_token = gpt3encoder.countTokens(Edit.character_note);
+
+						const system_prompt_token = gpt3encoder.countTokens(Edit.system_prompt);
+						const post_history_instructions_token = gpt3encoder.countTokens(Edit.post_history_instructions);
+						//const total = gpt3encoder.countTokens(Edit.name + Edit.personality + Edit.greeting + Edit.summary + Edit.scenario + Edit.examples);
+						const total = name_token + personality_token + greeting_token + summary_token + scenario_token + examples_token + character_note_token + system_prompt_token + post_history_instructions_token;
+						const prompts = system_prompt_token + post_history_instructions_token;
+						document.getElementById('total-tokens').innerText = `${total.toLocaleString()} ${Format.pluralize(total, 'token', 'tokens')} total`;
+						//document.getElementById('edit-tokens').innerHTML = `<strong>${total.toLocaleString()} ${Format.pluralize(total, 'token', 'tokens')} total:</strong><table><tr>
+
+
+
+  const name_alt_token = gpt3encoder.countTokens(Edit.name_alt);
+  const personality_alt_token = gpt3encoder.countTokens(Edit.personality_alt);
+  const greeting_alt_token = gpt3encoder.countTokens(Edit.greeting_alt);
+  const summary_alt_token = gpt3encoder.countTokens(Edit.summary_alt);
+  const scenario_alt_token = gpt3encoder.countTokens(Edit.scenario_alt);
+  const examples_alt_token = gpt3encoder.countTokens(Edit.examples_alt);
+  const character_note_alt_token = gpt3encoder.countTokens(Edit.character_note_alt);
+
+	const system_prompt_alt_token = gpt3encoder.countTokens(Edit.system_prompt_alt);
+	const post_history_instructions_alt_token = gpt3encoder.countTokens(Edit.post_history_instructions_alt);
+
+  const total_alt = name_alt_token + personality_alt_token + greeting_alt_token + summary_alt_token + scenario_alt_token + examples_alt_token + character_note_alt_token + system_prompt_alt_token + post_history_instructions_alt_token;
+  const prompts_alt = system_prompt_alt_token + post_history_instructions_alt_token;
+  document.getElementById('total-tokens-alt').innerText = `${total_alt.toLocaleString()} ${Format.pluralize(total_alt, 'token', 'tokens')} total`;
+
+
+
+// Function to handle tab switch
+function handleTabSwitch(event) {
+  updateTokensAndContent(); // Call the update function to change content based on the active tab
+}
+
+// Attach the event listener for Bootstrap tabs switch
+document.querySelectorAll('.nav-link').forEach(tab => {
+  tab.addEventListener('shown.bs.tab', handleTabSwitch);
+});
+
+// Existing code
+// Debounce function to limit the rate at which a function can fire.
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+};
+
+// Function to update the tokens and content
+function updateTokensAndContent() {
+  // ... Your token calculations here ...
+
+  // Check which tab is active
+  const isActiveOriginal = document.querySelector('#pills-original-tab').classList.contains('active');
+
+  // Update .innerHTML based on the active tab
+  if(isActiveOriginal) {
+    document.getElementById('edit-tokens').innerHTML = `
+    <table class="table table-sm">
+			<!--<caption><div class="text-center fs-2"><b>${total.toLocaleString()} ${Format.pluralize(total, 'token', 'tokens')} total</b></div></caption>
+			  <thead>
+			    <tr class="table">
+			      <th scope="col">Category</th>
+			      <th scope="col">Tokens</th>
+			    </tr>
+			  </thead>-->
+			  <tbody>
+			    <tr class="table">
+			      <!--<th scope="row"><a href="#anchor-name" style="text-decoration:none; color:var(--bs-body-color)">Name</a></th>-->
+			      <th scope="row"><a href="#anchor-name" style="text-decoration:none;">Name</a></th>
+			      <td>${name_token.toLocaleString()}</td>
+			    </tr>
+			    <tr class="table">
+			      <th scope="row"><a href="#anchor-personality" style="text-decoration:none;">Description</a></th>
+			      <td>${personality_token.toLocaleString()}</td>
+			    </tr>
+			    <tr class="table">
+			      <th scope="row"><a href="#anchor-greeting" style="text-decoration:none;">First Message</a></th>
+			      <td colspan="2">${greeting_token.toLocaleString()}</td>
+			    </tr>
+			    <tr class="table">
+			    	<th scope="row"><a href="#anchor-summary" style="text-decoration:none;">Summary</a></th>
+			      <td colspan="2">${summary_token.toLocaleString()}</td>
+			    </tr>
+			    <tr class="table">
+			    	<th scope="row"><a href="#anchor-scenario" style="text-decoration:none;">Scenario</a></th>
+			      <td colspan="2">${scenario_token.toLocaleString()}</td>
+			    </tr>
+			    <tr class="table">
+			    	<th scope="row"><a href="#anchor-examples" style="text-decoration:none;">Examples</a></th>
+			      <td colspan="2">${examples_token.toLocaleString()}</td>
+			    </tr>
+			    <tr class="table">
+			    	<th scope="row"><a href="#anchor-character-note" style="text-decoration:none;">Character's Note</a></th>
+			      <td colspan="2">${character_note_token.toLocaleString()}</td>
+			    </tr>
+			    <tr class="table">
+			    	<th scope="row"><a href="#anchor-system-prompt" style="text-decoration:none;">Prompt Overrides</a></th>
+			      <td colspan="2">${prompts.toLocaleString()}</td>
+			    </tr>
+			  </tbody>
+			</table>
+			<div class="text-center fs-5"><b>${total.toLocaleString()} ${Format.pluralize(total, 'token', 'tokens')} total</b></div>`; // Content for original tab
+  } else {
+    document.getElementById('edit-tokens').innerHTML = `
+    <table class="table table-sm">
+		<!--<caption><div class="text-center fs-2"><b>${total.toLocaleString()} ${Format.pluralize(total, 'token', 'tokens')} total</b></div></caption>
+		  <thead>
+		    <tr class="table">
+		      <th scope="col">Category</th>
+		      <th scope="col">Tokens</th>
+		    </tr>
+		  </thead>-->
+		  <tbody>
+		    <tr class="table">
+		      <!--<th scope="row"><a href="#anchor-name-alt" style="text-decoration:none; color:var(--bs-body-color)">Name</a></th>-->
+		      <th scope="row"><a href="#anchor-name-alt" style="text-decoration:none;">Имя</a></th>
+		      <td>${name_alt_token.toLocaleString()}</td>
+		    </tr>
+		    <tr class="table">
+		      <th scope="row"><a href="#anchor-personality-alt" style="text-decoration:none;">Описание</a></th>
+		      <td>${personality_alt_token.toLocaleString()}</td>
+		    </tr>
+		    <tr class="table">
+		      <th scope="row"><a href="#anchor-greeting-alt" style="text-decoration:none;">Первое сообщение</a></th>
+		      <td colspan="2">${greeting_alt_token.toLocaleString()}</td>
+		    </tr>
+		    <tr class="table">
+		    	<th scope="row"><a href="#anchor-summary-alt" style="text-decoration:none;">Характер</a></th>
+		      <td colspan="2">${summary_alt_token.toLocaleString()}</td>
+		    </tr>
+		    <tr class="table">
+		    	<th scope="row"><a href="#anchor-scenario-alt" style="text-decoration:none;">Сценарий</a></th>
+		      <td colspan="2">${scenario_alt_token.toLocaleString()}</td>
+		    </tr>
+		    <tr class="table">
+		    	<th scope="row"><a href="#anchor-examples-alt" style="text-decoration:none;">Примеры</a></th>
+		      <td colspan="2">${examples_alt_token.toLocaleString()}</td>
+		    </tr>
+		    <tr class="table">
+		    	<th scope="row"><a href="#anchor-character-note-alt" style="text-decoration:none;">Примечание персонажа</a></th>
+		      <td colspan="2">${character_note_alt_token.toLocaleString()}</td>
+		    </tr>
+		    <tr class="table">
+		    	<th scope="row"><a href="#anchor-system-prompt-alt" style="text-decoration:none;">Уникальные промпты</a></th>
+		      <td colspan="2">${prompts_alt.toLocaleString()}</td>
+		    </tr>
+		  </tbody>
+		</table>
+		<div class="text-center fs-5"><b>Всего ${total_alt.toLocaleString()} ${Format.pluralize(total, 'токен', 'токенов')}</b></div>`; // Content for translated tab
+  }
+}
+
+// Attach the event listener to the inputs and textareas
+document.querySelectorAll('input[type=text], textarea').forEach(input => {
+  input.addEventListener('input', debounce(updateTokensAndContent, 500)); // Adjust the debounce time (ms) as needed
+});
+
+
+
+
+
+
+
+
+
+
+
+			}
+
+			constructor() {
+				document.querySelectorAll('input[type=text], textarea').forEach(el => {
+					Tokenizer.update(el);
+
+					el.addEventListener('input', e => {
+						Tokenizer.update(e.target);
+					});
+				});
+			}
+		}
+
+		class TextareaAutoSize {
+			static update(el) {
+				if (el === undefined) {
+					document.querySelectorAll('.auto-size').forEach(el => {
+						this.update(el);
+					});
+
+					return;
+				}
+
+				const style = getComputedStyle(el, null);
+
+				el.style.height = parseInt(style['fontSize']) + 'px';
+				el.style.height = (parseInt(el.scrollHeight) + (parseInt(style['borderTopWidth']) + parseInt(style['borderBottomWidth']) || 100)) + 'px';
+			}
+
+			constructor() {
+				document.querySelectorAll('.auto-size').forEach(el => {
+					TextareaAutoSize.update(el);
+
+					el.addEventListener('input', e => {
+						TextareaAutoSize.update(e.target);
+					});
+				});
+			}
+		}
+
+		class CaiMetadata {
+			#id;
+			#avatar;
+			#categories = [];
+			#visibility;
+			#interactions;
+			#imageGeneration;
+
+			get id() {
+				return this.#id;
+			}
+
+			get avatar() {
+				return this.#avatar;
+			}
+
+			get categories() {
+				return this.#categories;
+			}
+
+			get visibility() {
+				return this.#visibility;
+			}
+
+			get interactions() {
+				return this.#interactions;
+			}
+
+			get imageGeneration() {
+				return this.#imageGeneration;
+			}
+
+			#valid(object, key) {
+				if (!object || !object.hasOwnProperty(key)) return false;
+
+				const value = object[key];
+
+				if (object[key] === undefined || object[key] === null) return false;
+				if (Array.isArray(object[key]) && object[key].length < 1) return false;
+				if ((typeof object[key] === 'string' || object[key] instanceof String) && (!object[key] || !object[key].trim())) return false;
+
+				return true;
+			}
+
+			#sanitize(object, key) {
+				if (!this.#valid(object, key)) return null;
+
+				if (typeof object[key] === 'string' || object[key] instanceof String) return object[key].trim();
+
+				return object[key];
+			}
+
+			constructor(json) {
+				if (!json) return;
+
+				if (this.#valid(json, 'external_id')) this.#id = this.#sanitize(json, 'external_id');
+				if (this.#valid(json, 'avatar_file_name')) this.#avatar = this.#sanitize(json, 'avatar_file_name');
+				if (this.#valid(json, 'categories')) this.#categories = this.#sanitize(json, 'categories').map(c => c.name);
+				if (this.#valid(json, 'visibility')) this.#visibility = this.#sanitize(json, 'visibility');
+				if (this.#valid(json, 'num_interactions')) this.#interactions = this.#sanitize(json, 'num_interactions'); // CIA Character
+				if (this.#valid(json, 'participant__num_interactions')) this.#interactions = this.#sanitize(json, 'participant__num_interactions'); // CIA History
+				if (this.#valid(json, 'img_gen_enabled')) this.#imageGeneration = this.#sanitize(json, 'img_gen_enabled');
+			}
+		}
+
+		class Character {
+			#name;
+			#personality;
+			#greeting;
+			#alternate_greetings;
+			#summary;
+			#scenario;
+			#examples;
+			#creator;
+			#rentry;
+			#comment;
+			#talkativeness;
+			#character_note;
+			#character_note_depth;
+			#system_prompt;
+			#post_history_instructions;
+			#version;
+			#tags;
+
+			/////
+
+			#name_alt;
+			#personality_alt;
+			#greeting_alt;
+			#alternate_greetings_alt;
+			#summary_alt;
+			#scenario_alt;
+			#examples_alt;
+			#creator_alt;
+			#rentry_alt;
+			#comment_alt;
+			#talkativeness_alt;
+			#character_note_alt;
+			#character_note_depth_alt;
+			#system_prompt_alt;
+			#post_history_instructions_alt;
+			#version_alt;
+			#tags_alt;
+
+			get name() {
+				return this.#name;
+			}
+
+			get personality() {
+				return this.#personality;
+			}
+
+			get greeting() {
+				return this.#greeting;
+			}
+
+			get summary() {
+				return this.#summary;
+			}
+
+			get scenario() {
+				return this.#scenario;
+			}
+
+			get examples() {
+				return this.#examples;
+			}
+
+			get creator() {
+				return this.#creator;
+			}
+
+			get rentry() {
+				return this.#rentry;
+			}
+
+			get comment() {
+				return this.#comment;
+			}
+
+			get talkativeness() {
+				return this.#talkativeness;
+			}
+
+			get character_note() {
+				return this.#character_note;
+			}
+
+			get character_note_depth() {
+				return this.#character_note_depth;
+			}
+
+			get system_prompt() {
+				return this.#system_prompt;
+			}
+
+			get post_history_instructions() {
+				return this.#post_history_instructions;
+			}
+
+			get version() {
+				return this.#version;
+			}
+
+			get tags() {
+				return this.#tags;
+			}
+
+			//////////
+
+			get name_alt() {
+				return this.#name_alt;
+			}
+
+			get personality_alt() {
+				return this.#personality_alt;
+			}
+
+			get greeting_alt() {
+				return this.#greeting_alt;
+			}
+
+			get summary_alt() {
+				return this.#summary_alt;
+			}
+
+			get scenario_alt() {
+				return this.#scenario_alt;
+			}
+
+			get examples_alt() {
+				return this.#examples_alt;
+			}
+
+			get creator_alt() {
+				return this.#creator_alt;
+			}
+
+			get rentry_alt() {
+				return this.#rentry_alt;
+			}
+
+			get comment_alt() {
+				return this.#comment_alt;
+			}
+
+			get talkativeness_alt() {
+				return this.#talkativeness_alt;
+			}
+
+			get character_note_alt() {
+				return this.#character_note_alt;
+			}
+
+			get character_note_depth_alt() {
+				return this.#character_note_depth_alt;
+			}
+
+			get system_prompt_alt() {
+				return this.#system_prompt_alt;
+			}
+
+			get post_history_instructions_alt() {
+				return this.#post_history_instructions_alt;
+			}
+
+			get version_alt() {
+				return this.#version_alt;
+			}
+
+			get tags_alt() {
+				return this.#tags_alt;
+			}
+
+			/////
+
+			get tokens() {
+				return Tokenizer.count(this.name + this.personality + this.greeting + this.summary + this.scenario + this.examples);
+			}
+
+			#valid_value(object, key) {
+			    if (!object || !object.hasOwnProperty(key)) return false;
+			    const value = object[key];
+			    if (typeof value !== 'string' || !value.trim()) return false;
+			    return true;
+			}
+
+			#sanitize_value(object, key) {
+			    if (this.#valid(object, key)) {
+			        const value = object[key].toString().trim();
+			        return value;
+			    }
+			    return null;
+			}
+
+	//		#valid(object, key) {
+	//			if (!object || !object.hasOwnProperty(key) || !object[key] || !object[key].trim()) return false;
+	//			return true;
+	//		}
+
+			#valid(object, key) {
+				if (!object || !object.hasOwnProperty(key) || !object[key] || !object[key].toString().trim()) return false;
+				return true;
+			}
+
+			#valid_array(object, key) {
+				if (!object || !object.hasOwnProperty(key) || !Array.isArray(object[key]) || !object[key].length) return false;
+				return true; }
+
+			#valid_object(object, key) {
+				if (!object || !object.hasOwnProperty(key) || !object[key] || !object[key].toString().trim()) return false;
+				return true;
+			}
+
+	//		#sanitize(object, key) {
+	//			return this.#valid(object, key) ? object[key].trim() : null;
+	//		}
+
+			#sanitize(object, key) {
+				return this.#valid(object, key) ? object[key].toString().trim() : null;
+			}
+
+			#sanitize_array(object, key) {
+				if (!object || !object.hasOwnProperty(key) || !object[key] || !Array.isArray(object[key]) || !object[key].length) return null; return object[key].map((value) => value.trim()); }
+
+			#sanitize_object(object, key) {
+				return this.#valid(object, key) ? object[key].toString().trim() : null;
+			}
+
+			constructor(json) {
+				if (!json) return;
+
+				console.log(json);
+
+				// Text Generation
+				if (this.#valid(json, 'char_name')) this.#name = this.#sanitize(json, 'char_name');
+				if (this.#valid(json, 'char_greeting')) this.#greeting = this.#sanitize(json, 'char_greeting');
+
+				// TavernAI
+				//if (this.#valid(json, 'name')) this.#name = this.#sanitize(json, 'name');
+				//if (this.#valid(json, 'description')) this.#personality = this.#sanitize(json, 'description');
+				//if (this.#valid(json, 'first_mes')) this.#greeting = this.#sanitize(json, 'first_mes');
+				//if (this.#valid(json, 'personality')) this.#summary = this.#sanitize(json, 'personality');
+				//if (this.#valid(json, 'scenario')) this.#scenario = this.#sanitize(json, 'scenario');
+				//if (this.#valid(json, 'mes_example')) this.#examples = this.#sanitize(json, 'mes_example');
+				//if (this.#valid(json, 'creator')) this.#creator = this.#sanitize(json, 'creator');
+				//if (this.#valid(json, 'creator_notes')) this.#comment = this.#sanitize(json, 'creator_notes');
+
+
+				// TavernAI (Original)
+				if (this.#valid(json.data, 'name') || this.#valid(json, 'name')) this.#name = this.#sanitize(json.data, 'name') || this.#sanitize(json, 'name');
+				if (this.#valid(json.data, 'description') || this.#valid(json, 'description')) this.#personality = this.#sanitize(json.data, 'description') || this.#sanitize(json, 'description');
+				if (this.#valid(json.data, 'first_mes') || this.#valid(json, 'first_mes')) this.#greeting = this.#sanitize(json.data, 'first_mes') || this.#sanitize(json, 'first_mes');
+				if (this.#valid_array(json.data, 'alternate_greetings')) {
+					const alternateGreetings = this.#sanitize_array(json.data, 'alternate_greetings');
+					if (Array.isArray(alternateGreetings)) {
+						const alternateGreetingFields = ['alternate-greeting-1', 'alternate-greeting-2', 'alternate-greeting-3', 'alternate-greeting-4'];
+						for (let i = 0; i < alternateGreetingFields.length; i++) {
+							if (i < alternateGreetings.length) {
+								document.getElementById(alternateGreetingFields[i]).value = alternateGreetings[i];
+							}
+						}
+					}
+				};
+				if (this.#valid_array(json.data, 'tags') || this.#valid_array(json, 'tags')) {
+				    this.#tags = this.#sanitize_array(json.data, 'tags') || this.#sanitize_array(json, 'tags');
+				    var tagInput = new TagsInput({
+				        selector: 'edit-tags',
+				        duplicate: false,
+				        max: 20
+				    });
+				    tagInput.addData(this.#tags);
+				};
+				if (this.#valid(json.data, 'personality') || this.#valid(json, 'personality')) this.#summary = this.#sanitize(json.data, 'personality') || this.#sanitize(json, 'personality');
+				if (this.#valid(json.data, 'scenario') || this.#valid(json, 'scenario')) this.#scenario = this.#sanitize(json.data, 'scenario') || this.#sanitize(json, 'scenario');
+				if (this.#valid(json.data, 'mes_example') || this.#valid(json, 'mes_example')) this.#examples = this.#sanitize(json.data, 'mes_example') || this.#sanitize(json, 'mes_example');
+				if (this.#valid(json.data, 'creator')) this.#creator = this.#sanitize(json.data, 'creator');
+				if (this.#valid(json.data, 'creator_notes')) this.#comment = this.#sanitize(json.data, 'creator_notes');
+				if (this.#valid(json.data, 'talkativeness')) this.#talkativeness = this.#sanitize(json.data, 'talkativeness');
+
+
+			//	if (json.data.extensions) {
+			//		if (this.#valid_object(json.data.extensions, 'depth_prompt')) this.#character_note = this.#sanitize_object(json.data.extensions.depth_prompt, 'prompt');
+			//		if (this.#valid_object(json.data.extensions, 'depth_prompt')) this.#character_note_depth = this.#sanitize_value(json.data.extensions.depth_prompt, 'depth');
+			//		//if (json.data.extensions && json.data.extensions.depth_prompt) this.#character_note_depth = json.data.extensions.depth_prompt;
+			//	};
+
+			//	if (json.data.extensions || json.extensions ) {
+			//			if (this.#valid(json.data.extensions, 'talkativeness')) this.#talkativeness = this.#sanitize(json.data.extensions, 'talkativeness');
+			//	    if (this.#valid_object(json.data.extensions, 'depth_prompt')) {
+			//	        this.#character_note = this.#sanitize_object(json.data.extensions.depth_prompt, 'prompt');
+			//	    }
+			//	    if (this.#valid_object(json.data.extensions, 'depth_prompt')) {
+			//	        this.#character_note_depth = this.#sanitize_object(json.data.extensions.depth_prompt, 'depth');
+			//	    }
+			//	}
+
+				if (json.data && (json.data.extensions || json.extensions)) {
+				    if (this.#valid(json.data.extensions, 'talkativeness')) {
+				        this.#talkativeness = this.#sanitize(json.data.extensions, 'talkativeness');
+				    }
+				    if (this.#valid_object(json.data.extensions, 'depth_prompt')) {
+				        this.#character_note = this.#sanitize_object(json.data.extensions.depth_prompt, 'prompt');
+				    }
+				    if (this.#valid_object(json.data.extensions, 'depth_prompt')) {
+				        this.#character_note_depth = this.#sanitize_object(json.data.extensions.depth_prompt, 'depth');
+				    }
+				}
+
+				if (this.#valid(json.data, 'system_prompt')) this.#system_prompt = this.#sanitize(json.data, 'system_prompt');
+				if (this.#valid(json.data, 'post_history_instructions')) this.#post_history_instructions = this.#sanitize(json.data, 'post_history_instructions');
+
+				if (this.#valid(json.misc, 'rentry')) this.#rentry = this.#sanitize(json.misc, 'rentry');
+				if (this.#valid(json.data, 'character_version')) this.#version = this.#sanitize(json.data, 'character_version');
+
+
+
+
+
+
+				// TavernAI (Translated)
+			if (json.alternative) {
+				if (this.#valid(json.alternative, 'name_alt')) this.#name_alt = this.#sanitize(json.alternative, 'name_alt');
+				if (this.#valid(json.alternative, 'description_alt')) this.#personality_alt = this.#sanitize(json.alternative, 'description_alt');
+				if (this.#valid(json.alternative, 'first_mes_alt')) this.#greeting_alt = this.#sanitize(json.alternative, 'first_mes_alt');
+				if (this.#valid_array(json.alternative, 'alternate_greetings_alt')) {
+					const alternateGreetings2 = this.#sanitize_array(json.alternative, 'alternate_greetings_alt');
+					if (Array.isArray(alternateGreetings2)) {
+						const alternateGreetingFields2 = ['alternate-greeting-alt-1', 'alternate-greeting-alt-2', 'alternate-greeting-alt-3', 'alternate-greeting-alt-4'];
+						for (let i = 0; i < alternateGreetingFields2.length; i++) {
+							if (i < alternateGreetings2.length) {
+								document.getElementById(alternateGreetingFields2[i]).value = alternateGreetings2[i];
+							}
+						}
+					}
+				};
+				if (this.#valid_array(json.alternative, 'tags_alt') || this.#valid_array(json, 'tags_alt')) {
+				    this.#tags_alt = this.#sanitize_array(json.alternative, 'tags_alt') || this.#sanitize_array(json, 'tags_alt');
+				    var tagInput = new TagsInput({
+				        selector: 'edit-tags-alt',
+				        duplicate: false,
+				        max: 20
+				    });
+				    tagInput.addData(this.#tags_alt);
+				};
+				if (this.#valid(json.alternative, 'personality_alt')) this.#summary_alt = this.#sanitize(json.alternative, 'personality_alt');
+				if (this.#valid(json.alternative, 'scenario_alt')) this.#scenario_alt = this.#sanitize(json.alternative, 'scenario_alt');
+				if (this.#valid(json.alternative, 'mes_example_alt')) this.#examples_alt = this.#sanitize(json.alternative, 'mes_example_alt');
+				if (this.#valid(json.alternative, 'creator_alt')) this.#creator_alt = this.#sanitize(json.alternative, 'creator_alt');
+				if (this.#valid(json.alternative, 'creator_notes_alt')) this.#comment_alt = this.#sanitize(json.alternative, 'creator_notes_alt');
+				if (this.#valid(json.alternative, 'talkativeness_alt')) this.#talkativeness_alt = this.#sanitize(json.alternative, 'talkativeness_alt');
+
+			//	if (json.alternative && json.alternative.extensions_alt) {
+			//		if (this.#valid(json.alternative.extensions_alt, 'talkativeness_alt')) this.#talkativeness_alt = this.#sanitize(json.alternative.extensions_alt, 'talkativeness_alt');
+			//		if (this.#valid_object(json.alternative.extensions_alt, 'depth_prompt_alt')) this.#character_note_alt = this.#sanitize_object(json.alternative.extensions_alt.depth_prompt_alt, 'prompt_alt');
+			//		if (this.#valid_object(json.alternative.extensions_alt, 'depth_prompt_alt')) this.#character_note_depth_alt = this.#sanitize_object(json.alternative.extensions_alt.depth_prompt_alt, 'depth_alt');
+			//		};
+
+
+				if (json.alternative && json.alternative.extensions_alt) {
+				    if (this.#valid(json.alternative.extensions_alt, 'talkativeness_alt')) this.#talkativeness_alt = this.#sanitize(json.alternative.extensions_alt, 'talkativeness_alt');
+				    if (this.#valid_object(json.alternative.extensions_alt, 'depth_prompt_alt')) this.#character_note_alt = this.#sanitize_object(json.alternative.extensions_alt.depth_prompt_alt, 'prompt_alt');
+				    if (this.#valid_object(json.alternative.extensions_alt, 'depth_prompt_alt')) this.#character_note_depth_alt = this.#sanitize_object(json.alternative.extensions_alt.depth_prompt_alt, 'depth_alt');
+				}
+
+
+				//if (json.alternative.extensions_alt && json.alternative.extensions_alt.depth_prompt_alt) this.#character_note_depth_alt = json.alternative.extensions_alt.depth_prompt_alt;
+
+				if (this.#valid(json.alternative, 'system_prompt_alt')) this.#system_prompt_alt = this.#sanitize(json.alternative, 'system_prompt_alt');
+				if (this.#valid(json.alternative, 'post_history_instructions_alt')) this.#post_history_instructions_alt = this.#sanitize(json.alternative, 'post_history_instructions_alt');
+
+				if (this.#valid(json.misc, 'rentry_alt')) this.#rentry_alt = this.#sanitize(json.misc, 'rentry_alt');
+				if (this.#valid(json.alternative, 'character_version_alt')) this.#version_alt = this.#sanitize(json.alternative, 'character_version_alt');
+
+			}
+
+				// CIA Character
+				if (json.character) {
+					if (this.#valid(json.character, 'name')) this.#name = this.#sanitize(json.character, 'name');
+					if (this.#valid(json.character, 'title')) this.#personality = this.#sanitize(json.character, 'title');
+					if (this.#valid(json.character, 'greeting')) this.#greeting = this.#sanitize(json.character, 'greeting');
+				}
+
+				// CIA History
+				if (json.info && json.info.character) {
+					if (this.#valid(json.info.character, 'name')) this.#name = this.#sanitize(json.info.character, 'name');
+					if (this.#valid(json.info.character, 'title')) this.#personality = this.#sanitize(json.info.character, 'title');
+					if (this.#valid(json.info.character, 'greeting')) this.#greeting = this.#sanitize(json.info.character, 'greeting');
+				}
+			}
+		}
+
+		class Source {
+			#file;
+			#json;
+			#image;
+			#character;
+			#formats = [];
+			#metadata = {};
+
+			get file() {
+				return this.#file;
+			}
+
+			get json() {
+				return this.#json;
+			}
+
+			get image() {
+				return this.#image;
+			}
+
+			get character() {
+				return this.#character;
+			}
+
+			get formats() {
+				return this.#formats;
+			}
+
+			get metadata() {
+				return this.#metadata;
+			}
+
+			#detectFormats(json) {
+				const checkProperties = (properties, obj = json) => properties.every(p => obj.hasOwnProperty(p));
+
+				//if (checkProperties(['char_name', 'char_persona', 'char_greeting'])) this.formats.push(JsonFormats.TextGenerationCharacter);
+				//if (checkProperties(['name', 'description', 'first_mes'])) this.formats.push(JsonFormats.TavernCharacter);
+				//if (checkProperties(['data']) || (['name'])) this.formats.push(JsonFormats.CharacterCardv1);
+
+				//if (checkProperties(['name'], json) && !this.hasOwnProperty('spec_version')) this.formats.push(JsonFormats.CharacterCardv1);
+				//if (checkProperties(['spec_version']) && ['spec_version'] === '2.0') this.formats.push(JsonFormats.CharacterCardv2);
+
+				if (json.hasOwnProperty('spec_version')) {
+				    this.formats.push(JsonFormats.CharacterCardv2);
+				} else {
+				    this.formats.push(JsonFormats.CharacterCardv1);
+				}
+
+				//if (json.character && checkProperties(['name', 'title', 'description', 'greeting', 'definition'], json.character)) this.formats.push(JsonFormats.CaiCharacter);
+				//if (json.info && json.info.character && checkProperties(['name', 'title', 'description', 'greeting'], json.info.character)) this.formats.push(JsonFormats.CaiHistory);
+			}
+
+			static async fromFile(file) {
+				const { json, image } = await Loader.parse(file);
+
+				return new Source(file, json, image);
+			}
+
+			constructor(file = null, json = null, image = null) {
+				if (file) this.#file = file;
+				if (json) this.#json = json;
+				if (image) this.#image = image;
+
+				this.#character = new Character(this.json);
+
+				if (this.json) {
+					this.#detectFormats(this.json);
+
+					if (this.formats.length < 1) throw new JsonUnknownFormatError('Format not recognised', this.json);
+
+					//if (this.image) this.#formats = ['Character Card'];
+					//if (this.image) this.formats.push(JsonFormats.CharacterCardv2);
+
+					if (this.formats.includes(JsonFormats.CaiCharacter)) this.#metadata.cai = new CaiMetadata(this.json.character);
+					if (this.formats.includes(JsonFormats.CaiHistory)) this.#metadata.cai = new CaiMetadata(this.json.info.character);
+				}
+			}
+		}
+
+//		class Load extends EventTarget {
+//			#accordionElement = document.getElementById('accordion-load');
+//			#loadButtonElement = document.getElementById('load');
+//			#createButtonElement = document.getElementById('create');
+//			#restoreButtonElement = document.getElementById('restore');
+//
+//			#dragStart() {
+//				this.#accordionElement.classList.add('bg-drag');
+//			}
+//
+//			#dragStop() {
+//				this.#accordionElement.classList.remove('bg-drag');
+//			}
+//
+//			#create() {
+//				Edit.saveDataInLocalStorage();		// Localstorage saving your current work when you create new character (by AliCat)
+//				this.dispatchEvent(new CustomEvent('create'));
+//			}
+//
+//			#load(file) {
+//				this.dispatchEvent(new CustomEvent('load', {
+//					detail: {
+//						file
+//					}
+//				}));
+//			}
+//
+//			#restore() {
+//				this.dispatchEvent(new CustomEvent('restore'));
+//			}
+//
+//			constructor() {
+//				super();
+//
+//				// New character button
+//				this.#createButtonElement.addEventListener('click', () => {
+//					this.#create();
+//				});
+//
+//				// Load drag
+//				this.#accordionElement.addEventListener('dragover', e => {
+//					e.preventDefault();
+//
+//					if (e.dataTransfer.items[0].kind === 'file' && (e.dataTransfer.items[0].type === 'application/json' || e.dataTransfer.items[0].type === 'image/png')) {
+//						e.dataTransfer.effectAllowed = 'move';
+//						e.dataTransfer.dropEffect = 'move';
+//
+//						this.#dragStart();
+//					} else {
+//						e.dataTransfer.effectAllowed = 'none';
+//						e.dataTransfer.dropEffect = 'none';
+//
+//						this.#dragStop();
+//					}
+//				});
+//
+//				this.#accordionElement.addEventListener('dragleave', e => {
+//					e.preventDefault();
+//
+//					this.#dragStop();
+//				});
+//
+//				// Load drop
+//				this.#accordionElement.addEventListener('drop', e => {
+//					e.preventDefault();
+//
+//					this.#dragStop();
+//
+//					if (!e.dataTransfer.files || e.dataTransfer.files.length < 1) return;
+//
+//					this.#load(e.dataTransfer.files[0]);
+//				});
+//
+//				// Load button
+//				this.#loadButtonElement.addEventListener('change', e => {
+//					if (!e.target.files || e.target.files.length < 1) return;
+//
+//					this.#load(e.target.files[0]);
+//				});
+//
+//				// Restore character button
+//				this.#restoreButtonElement.addEventListener('click', () => {
+//					this.#restore();
+//				});
+//			}
+//		}
+
+
+
+
+class Load extends EventTarget {
+    #loadButtonElement = document.getElementById('load');
+    #createButtonElement = document.getElementById('create');
+    #restoreButtonElement = document.getElementById('restore');
+    #overlay = null;
+
+		#dragStart() {
+		    document.body.appendChild(this.#overlay);
+		    // Give just enough time for the overlay to render in the DOM before starting the transition.
+		    setTimeout(() => {
+		        this.#overlay.style.opacity = '1'; // Unveil the overlay with grace.
+		    }, 10); // A 'transitional' breather, short as it may be, is critical for elegance.
+		}
+
+    #dragStop() {
+        this.#overlay.style.opacity = '0';
+        setTimeout(() => {
+            this.#overlay.remove();
+        }, 500); // Match this with your transition time
+    }
+
+    #createOverlay() {
+        const overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.backdropFilter = "blur(2px)";
+        overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.25)';
+        overlay.style.zIndex = '9999';
+        overlay.style.opacity = '0'; // Start fully transparent
+        overlay.style.transition = 'opacity 0.25s ease-in-out'; // Add transition effect
+
+        const textElement = document.createElement('p');
+        textElement.innerHTML= "Drop file anywhere...";
+        textElement.style.position='absolute';
+        textElement.style.top='50%';
+        textElement.style.left='50%';
+        textElement.style.transform='translate(-50%, -50%)';
+        textElement.style.fontSize='70px';
+        textElement.style.textShadow='0 0 12px';
+        textElement.style.fontFamily='Tahoma';
+        textElement.style.fontWeight='bold';
+        textElement.style.color='#cfe2ff';
+
+        overlay.appendChild(textElement);
+
+        return overlay;
+    }
+
+    #create() {
+        Edit.saveDataInLocalStorage();
+        this.dispatchEvent(new CustomEvent('create'));
+    }
+
+    #load(file) {
+        this.dispatchEvent(new CustomEvent('load', { detail: { file } }));
+    }
+
+    #restore() {
+        this.dispatchEvent(new CustomEvent('restore'));
+    }
+
+    constructor() {
+        super();
+
+        this.#createButtonElement.addEventListener('click', () => {
+            this.#create();
+        });
+
+                this.#overlay = this.#createOverlay(); // Call function to create and configure the overlay
+
+                document.body.addEventListener('dragover', e => {
+            e.preventDefault();
+
+            if ((e.dataTransfer.items[0].kind === 'file') &&
+                (e.dataTransfer.items[0].type === 'application/json' ||
+                 e.dataTransfer.items[0].type === 'image/png')) {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.dropEffect = 'move';
+
+                if (!document.body.contains(this.#overlay)) {
+                    this.#dragStart();
+                }
+            } else {
+                e.dataTransfer.effectAllowed = 'none';
+                e.dataTransfer.dropEffect = 'none';
+
+                if (document.body.contains(this.#overlay)) {
+                    this.#dragStop();
+                }
+            }
+                });
+
+                document.body.addEventListener('dragleave', e => {
+            e.preventDefault();
+            if (!e.relatedTarget || e.relatedTarget === document.documentElement) {
+                this.#dragStop();
+            }
+                });
+
+                document.body.addEventListener('drop', e => {
+            e.preventDefault();
+
+            if ((e.dataTransfer.items[0].kind === 'file') &&
+                (e.dataTransfer.items[0].type === 'application/json' ||
+                 e.dataTransfer.items[0].type === 'image/png')) {
+                const file = e.dataTransfer.items[0].getAsFile();
+                this.#load(file);
+            }
+
+//            this.#dragStop();
+//                });
+//
+//                this.#loadButtonElement.addEventListener('change', e => {
+//                    const files = e.target.files;
+//                    if (files && files.length > 0) {
+//                        this.#load(files[0]);
+//                    }
+//                });
+//
+//                this.#restoreButtonElement.addEventListener('click', () => {
+//                    this.#restore();
+//                });
+//    }
+//}
+//
+//// Initialize the Load class
+//const loaderInstance = new Load();
+
+					  this.#dragStop();
+
+					            // Add scrollToAnchor function call here
+					            setTimeout(() => {
+					                scrollToAnchor('anchor-name');
+					            }, 500); // Adjust delay if needed
+					        });
+
+                this.#loadButtonElement.addEventListener('change', e => {
+                    const files = e.target.files;
+                    if (files && files.length > 0) {
+                        this.#load(files[0]);
+                    }
+                });
+
+                this.#restoreButtonElement.addEventListener('click', () => {
+                    this.#restore();
+                });
+    }
+}
+
+// Add scrollToAnchor function globally
+function scrollToAnchor(anchorName) {
+    const anchorElement = document.getElementById(anchorName);
+    if (anchorElement) {
+        anchorElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+// Initialize the Load class
+const loaderInstance = new Load();
+
+
+
+
+
+
+		// TODO: Remove static
+		class Edit {
+			static #caiWarningElement = document.getElementById('edit-alert-characterai-history');
+			static #caiWarningLinkElement = document.getElementById('edit-alert-characterai-history-link');
+
+			static #imageElement = document.getElementById('edit-image');
+			static #imagePlaceholderElement = document.getElementById('edit-image-placeholder');
+			static #imageDetailsElement = document.getElementById('edit-image-details');
+
+			static #nameElement = document.getElementById('edit-name');
+			static #personalityElement = document.getElementById('edit-personality');
+			static #greetingElement = document.getElementById('edit-greeting');
+			static #summaryElement = document.getElementById('edit-summary');
+			static #scenarioElement = document.getElementById('edit-scenario');
+			static #examplesElement = document.getElementById('edit-examples');
+			static #creatorElement = document.getElementById('edit-creator');
+			static #rentryElement = document.getElementById('edit-rentry');
+			static #commentElement = document.getElementById('edit-comment');
+			static #talkativenessElement = document.getElementById('edit-talkativeness');
+
+			static #characternoteElement = document.getElementById('edit-character-note');
+			static #characternotedepthElement = document.getElementById('edit-character-note-depth');
+			static #systempromptElement = document.getElementById('edit-system-prompt');
+			static #posthistoryinstructionsElement = document.getElementById('edit-post-history-instructions');
+
+			static #versionElement = document.getElementById('edit-version');
+			static #tagsElement = document.getElementById('edit-tags');
+
+			/////
+			static #nameElement_alt = document.getElementById('edit-name-alt');
+			static #personalityElement_alt = document.getElementById('edit-personality-alt');
+			static #greetingElement_alt = document.getElementById('edit-greeting-alt');
+			static #summaryElement_alt = document.getElementById('edit-summary-alt');
+			static #scenarioElement_alt = document.getElementById('edit-scenario-alt');
+			static #examplesElement_alt = document.getElementById('edit-examples-alt');
+			static #creatorElement_alt = document.getElementById('edit-creator-alt');
+			static #rentryElement_alt = document.getElementById('edit-rentry-alt');
+			static #commentElement_alt = document.getElementById('edit-comment-alt');
+			static #talkativenessElement_alt = document.getElementById('edit-talkativeness-alt');
+			static #versionElement_alt = document.getElementById('edit-version-alt');
+			static #tagsElement_alt = document.getElementById('edit-tags-alt');
+
+			static #characternoteElement_alt = document.getElementById('edit-character-note-alt');
+			static #characternotedepthElement_alt = document.getElementById('edit-character-note-depth-alt');
+			static #systempromptElement_alt = document.getElementById('edit-system-prompt-alt');
+			static #posthistoryinstructionsElement_alt = document.getElementById('edit-post-history-instructions-alt');
+			/////
+
+			static #originalContainerElement = document.getElementById('edit-original');
+			static #originalNameElement = document.getElementById('edit-original-name');
+			static #originalFormatElement = document.getElementById('edit-original-format');
+			static #originalTokensElement = document.getElementById('edit-original-tokens');
+			static #originalSizeElement = document.getElementById('edit-original-size');
+
+			//static #charContainerElement = document.getElementById('edit-char');
+			static #charNameElement = document.getElementById('edit-char-name');
+			static #charCreatorElement = document.getElementById('edit-char-creator');
+			static #charVersionElement = document.getElementById('edit-char-version');
+
+			static #originalModifiedElement = document.getElementById('edit-original-modified');
+
+			static #caiContainerElement = document.getElementById('edit-metadata-cai');
+			static #caiLinkElement = document.getElementById('edit-metadata-cai-link');
+			static #caiVisibilityElement = document.getElementById('edit-metadata-cai-visibility');
+			static #caiInteractionsElement = document.getElementById('edit-metadata-cai-interactions');
+			static #caiCategoriesElement = document.getElementById('edit-metadata-cai-categories');
+			static #caiImageGenerationElement = document.getElementById('edit-metadata-cai-image-generation');
+
+			static get name() {
+				return this.#nameElement.value.trim();
+			}
+
+			static get personality() {
+				return this.#personalityElement.value.trim();
+			}
+
+			static get greeting() {
+				return this.#greetingElement.value.trim();
+			}
+
+			static get summary() {
+				return this.#summaryElement.value.trim();
+			}
+
+			static get scenario() {
+				return this.#scenarioElement.value.trim();
+			}
+
+			static get examples() {
+				return this.#examplesElement.value.trim();
+			}
+
+			static get creator() {
+				return this.#creatorElement.value.trim();
+			}
+
+			static get rentry() {
+				return this.#rentryElement.value.trim();
+			}
+
+			static get comment() {
+				return this.#commentElement.value.trim();
+			}
+
+			static get talkativeness() {
+				return this.#talkativenessElement.value.trim();
+			}
+
+			static get character_note() {
+				return this.#characternoteElement.value.trim();
+			}
+
+			static get character_note_depth() {
+				return this.#characternotedepthElement.value.trim();
+			}
+
+			static get system_prompt() {
+				return this.#systempromptElement.value.trim();
+			}
+
+			static get post_history_instructions () {
+				return this.#posthistoryinstructionsElement.value.trim();
+			}
+
+			static get version() {
+				return this.#versionElement.value.trim();
+			}
+
+			static get tags() {
+				return this.#tagsElement.value.trim();
+			}
+
+//Alternative
+
+			static get name_alt() {
+				return this.#nameElement_alt.value.trim();
+			}
+
+			static get personality_alt() {
+				return this.#personalityElement_alt.value.trim();
+			}
+
+			static get greeting_alt() {
+				return this.#greetingElement_alt.value.trim();
+			}
+
+			static get summary_alt() {
+				return this.#summaryElement_alt.value.trim();
+			}
+
+			static get scenario_alt() {
+				return this.#scenarioElement_alt.value.trim();
+			}
+
+			static get examples_alt() {
+				return this.#examplesElement_alt.value.trim();
+			}
+
+			static get creator_alt() {
+				return this.#creatorElement_alt.value.trim();
+			}
+
+			static get rentry_alt() {
+				return this.#rentryElement_alt.value.trim();
+			}
+
+			static get comment_alt() {
+				return this.#commentElement_alt.value.trim();
+			}
+
+			static get talkativeness_alt() {
+				return this.#talkativenessElement_alt.value.trim();
+			}
+
+			static get character_note_alt() {
+				return this.#characternoteElement_alt.value.trim();
+			}
+
+			static get character_note_depth_alt() {
+				return this.#characternotedepthElement_alt.value.trim();
+			}
+
+			static get system_prompt_alt() {
+				return this.#systempromptElement_alt.value.trim();
+			}
+
+			static get post_history_instructions_alt () {
+				return this.#posthistoryinstructionsElement_alt.value.trim();
+			}
+
+			static get version_alt() {
+				return this.#versionElement_alt.value.trim();
+			}
+
+			static get tags_alt() {
+				return this.#tagsElement_alt.value.trim();
+			}
+
+			static #reset() {
+				Edit.#caiWarningElement.hide();
+
+				Edit.#imageElement.hide();
+				Edit.#imageElement.removeAttribute('src');
+				Edit.#imageElement.removeAttribute('alt');
+
+				Edit.#imageDetailsElement.hide();
+				Edit.#imageDetailsElement.innerText = null;
+
+				Edit.#imagePlaceholderElement.show();
+
+				//Edit.#charContainerElement.hide();
+
+				Edit.#originalContainerElement.hide();
+
+				Edit.#caiLinkElement.closest('.row').hide();
+				Edit.#caiVisibilityElement.closest('.row').hide();
+				Edit.#caiInteractionsElement.closest('.row').hide();
+				Edit.#caiCategoriesElement.closest('.row').hide();
+				Edit.#caiImageGenerationElement.closest('.row').hide();
+				Edit.#caiContainerElement.hide();
+
+				// TODO: Move
+				document.getElementById('export-image').hide();
+			}
+
+			static #convertImage(image) {
+				const canvas = document.createElement('canvas');
+				canvas.width = image.width;
+				canvas.height = image.height;
+
+				const ctx = canvas.getContext('2d');
+				ctx.drawImage(image, 0, 0);
+
+				image.src = canvas.toDataURL('image/png');
+
+				return image;
+			}
+
+			static #showImage(image, alt = null) {
+				Edit.#imagePlaceholderElement.hide();
+
+				Edit.#imageElement.src = image.src;
+				if (alt) Edit.#imageElement.alt = alt;
+				Edit.#imageElement.show();
+
+				const ar = Format.ratio(image.width, image.height);
+				//Edit.#imageDetailsElement.innerText = `${image.width} x ${image.height}px (${image.width / ar}:${image.height / ar})`;
+				//Edit.#imageDetailsElement.innerHTML = `Resolutioin:&nbsp;<b>${image.width}×${image.height}</b>&nbsp;pixels (${image.width / ar}:${image.height / ar})`;
+				if (image.width != null) {
+					Edit.#imageDetailsElement.innerHTML = `Resolutioin:&nbsp;<b>${image.width}×${image.height}</b>&nbsp;pixels (${image.width / ar}:${image.height / ar})`;
+				} else {
+					Edit.#imageDetailsElement.innerHTML = `No image`;
+				};
+				Edit.#imageDetailsElement.show();
+
+
+				// TODO: Move
+				document.getElementById('export-image').show(); // Show export image option
+			}
+
+			// Localstorage implementation
+			static saveDataInLocalStorage() {
+				const data = {
+					name: Edit.name,
+					personality: Edit.personality,
+					greeting: Edit.greeting,
+					summary: Edit.summary,
+					scenario: Edit.scenario,
+					examples: Edit.examples,
+					creator: Edit.creator,
+					rentry: Edit.rentry,
+					comment: Edit.comment,
+					talkativeness: Edit.talkativeness,
+					character_note: Edit.character_note,
+					character_note_depth: Edit.character_note_depth,
+					system_prompt: Edit.system_prompt,
+					post_history_instructions: Edit.post_history_instructions,
+					version: Edit.version,
+					tags: Edit.tags,
+					///
+					name_alt: Edit.name_alt,
+					personality_alt: Edit.personality_alt,
+					greeting_alt: Edit.greeting_alt,
+					summary_alt: Edit.summary_alt,
+					scenario_alt: Edit.scenario_alt,
+					examples_alt: Edit.examples_alt,
+					creator_alt: Edit.creator_alt,
+					rentry_alt: Edit.rentry_alt,
+					comment_alt: Edit.comment_alt,
+					talkativeness_alt: Edit.talkativeness_alt,
+					character_note_alt: Edit.character_note_alt,
+					character_note_depth_alt: Edit.character_note_depth_alt,
+					system_prompt_alt: Edit.system_prompt_alt,
+					post_history_instructions_alt: Edit.post_history_instructions_alt,
+					version_alt: Edit.version_alt,
+					tags_alt: Edit.tags_alt,
+				};
+				const dataString = JSON.stringify(data);
+				localStorage.setItem('editData', dataString);
+
+				const image = document.getElementById('edit-image');	// image save
+				image.src = document.getElementById('edit-image').src;
+
+				// Convert the image to a data URL
+				const canvas = document.createElement('canvas');
+				const context = canvas.getContext('2d');
+				canvas.width = image.naturalWidth;
+				canvas.height = image.naturalHeight;
+				context.drawImage(image, 0, 0);
+				const dataURL = canvas.toDataURL(); // This will contain the image data in base64 format
+				// Save the data URL to localStorage
+				localStorage.setItem('imageData', dataURL);
+
+				console.log(this.#originalModifiedElement.getAttribute('datetime'));
+
+																	// Localstorage metadata save
+				const metadata = {
+					version: this.#versionElement.textContent,
+					name: this.#originalNameElement.textContent,
+					format: this.#originalFormatElement.textContent,
+					tokens: this.#originalTokensElement.textContent,
+					size: this.#originalSizeElement.textContent,
+
+					name: this.#charNameElement.textContent,
+					creator: this.#charCreatorElement.textContent,
+					version: this.#charVersionElement.textContent,
+
+					modified: this.#originalModifiedElement.getAttribute('datetime'),
+					width: image.naturalWidth,
+					height: image.naturalHeight,
+
+
+					// name: image.file.name,
+					//
+					// format: image.formats.join('<br>'),
+					//
+					// tokens: `${image.character.tokens.toLocaleString()} total`,
+					//
+					// size: Format.bytes(image.file.size),
+					//
+					// modified: Format.ago(image.file.lastModified),
+
+				};
+				const metadataString = JSON.stringify(metadata);
+				localStorage.setItem('metaData', metadataString);
+
+				console.log(metadata);
+
+
+
+
+
+				// const reader = new FileReader();
+				// reader.addEventListener('load', () => {
+				// 	// Save the Base64 encoded image data to LocalStorage
+				// 	localStorage.setItem('imageData', reader.result);
+				// 	//image.src = reader.result;
+				// });
+
+
+				//reader.readAsDataURL(source.file);
+			}
+
+			static loadDataFromLocalStorage() {
+				const dataString = localStorage.getItem('editData');
+				const metaData = localStorage.getItem('metaData');
+				const imageData = localStorage.getItem('imageData');
+				const imageInput = document.getElementById('edit-image');
+
+				if (dataString) {
+					const data = JSON.parse(dataString);
+					Edit.#nameElement.value = data.name;
+					Edit.#personalityElement.value = data.personality;
+					Edit.#greetingElement.value = data.greeting;
+					Edit.#summaryElement.value = data.summary;
+					Edit.#scenarioElement.value = data.scenario;
+					Edit.#examplesElement.value = data.examples;
+					Edit.#creatorElement.value = data.creator;
+					Edit.#rentryElement.value = data.rentry;
+					Edit.#commentElement.value = data.comment;
+					Edit.#talkativenessElement.value = data.talkativeness;
+					Edit.#characternoteElement.value = data.character_note;
+					Edit.#characternotedepthElement.value = data.character_note_depth;
+					Edit.#systempromptElement.value = data.system_prompt;
+					Edit.#posthistoryinstructionsElement.value = data.post_history_instructions;
+					Edit.#versionElement.value = data.version;
+					Edit.#tagsElement.value = data.tags;
+					////
+					Edit.#nameElement_alt.value = data.name_alt;
+					Edit.#personalityElement_alt.value = data.personality_alt;
+					Edit.#greetingElement_alt.value = data.greeting_alt;
+					Edit.#summaryElement_alt.value = data.summary_alt;
+					Edit.#scenarioElement_alt.value = data.scenario_alt;
+					Edit.#examplesElement_alt.value = data.examples_alt;
+					Edit.#creatorElement_alt.value = data.creator_alt;
+					Edit.#rentryElement_alt.value = data.rentry_alt;
+					Edit.#commentElement_alt.value = data.comment_alt;
+					Edit.#talkativenessElement_alt.value = data.talkativeness_alt;
+					Edit.#versionElement_alt.value = data.version_alt;
+					Edit.#tagsElement_alt.value = data.tags_alt;
+					///
+					Edit.#characternoteElement_alt.value = data.character_note_alt;
+					Edit.#characternotedepthElement_alt.value = data.character_note_depth_alt;
+					Edit.#systempromptElement_alt.value = data.system_prompt_alt;
+					Edit.#posthistoryinstructionsElement_alt.value = data.post_history_instructions_alt;
+				}
+				if (imageData) {
+					Edit.#imagePlaceholderElement.hide();
+					imageInput.src = imageData;
+					Edit.#imageElement.show();
+					document.getElementById('export-image').show();
+
+					//this.#showImage(imageData)
+				}
+
+
+				if (metaData) {
+					const data = JSON.parse(metaData);
+					Edit.#versionElement.innerText = data.version;
+					//Edit.#originalVersionElement.value = data.version;
+
+					Edit.#originalNameElement.innerText = data.name;
+
+					Edit.#originalFormatElement.innerHTML = data.format;
+
+					Edit.#originalTokensElement.innerText = data.tokens;
+
+					Edit.#originalSizeElement.innerText = data.size;
+
+					Edit.#charNameElement.innerText = data.name;
+
+					Edit.#charCreatorElement.innerText = data.creator;
+
+					Edit.#charVersionElement.innerText = data.version;
+
+					Edit.#originalModifiedElement.innerText = data.modified;
+
+					const ar = Format.ratio(data.width, data.height);
+					Edit.#imageDetailsElement.innerText = `${data.width} x ${data.height}px (${data.width / ar}:${data.height / ar})`;
+
+					Edit.#imageDetailsElement.show();
+					//Edit.#charContainerElement.show();
+					Edit.#originalContainerElement.show();
+				}
+			}
+
+			load(source) {
+				Edit.#reset();
+
+				if (source.formats.length === 1 && source.formats.includes(JsonFormats.CaiHistory)) {
+					Edit.#caiWarningLinkElement.href = `https://beta.character.ai/editing?char=${source.metadata.cai.id}`;
+					Edit.#caiWarningElement.show();
+				}
+
+				if (source.image) {
+					Edit.#showImage(source.image, source.file.name);
+				}
+
+				if (source.file) {
+					Edit.#versionElement.innerText = source.character.version;
+
+					Edit.#originalNameElement.innerText = source.file.name;
+
+					Edit.#originalFormatElement.innerHTML = source.formats.join('<br>');
+
+					//Edit.#originalTokensElement.innerText = `${source.character.tokens.toLocaleString()} total`;
+					Edit.#originalTokensElement.innerText = `${source.character.tokens.toLocaleString()} total`;
+
+					Edit.#originalSizeElement.innerText = Format.bytes(source.file.size);
+
+					Edit.#charNameElement.innerText = source.character.name;
+
+					Edit.#charVersionElement.innerText = source.character.version;
+
+					if (source.character && source.character.version) {
+						Edit.#charVersionElement.innerText = source.character.version;
+					} else {
+						Edit.#charVersionElement.innerText = "—";
+					};
+
+					//Edit.#originalCreatorElement.innerHTML = `<a href="https://chub.ai/users/${source.character.creator}" target="_blank"><img height="16" width="16" src="http://www.google.com/s2/favicons?domain=chub.ai">${source.character.creator}</a>`;
+
+					if (source.character && source.character.creator) {
+					    //Edit.#charCreatorElement.innerHTML = `<a href="https://chub.ai/users/${source.character.creator}" target="_blank"><img height="16" width="16" src="http://www.google.com/s2/favicons?domain=chub.ai">${source.character.creator}</a>`;
+					    if (source.character.rentry) {
+					    		Edit.#charCreatorElement.innerHTML = `
+					    		<a href="${source.character.rentry}" target="_blank"><img height="16" width="16" src="http://www.google.com/s2/favicons?domain=${source.character.rentry}"></a>
+									<a href="https://chub.ai/users/${source.character.creator}" target="_blank"><img height="16" width="16" src="http://www.google.com/s2/favicons?domain=chub.ai"></a>
+					    		<a href="https://chub.ai/users/${source.character.creator}" target="_blank"> ${source.character.creator}</a>`;
+					    } else {
+					        Edit.#charCreatorElement.innerHTML = `<a href="https://chub.ai/users/${source.character.creator}" target="_blank"><img height="16" width="16" src="http://www.google.com/s2/favicons?domain=chub.ai">${source.character.creator}</a>`;
+					    }
+					} else {
+					    Edit.#charCreatorElement.innerHTML = "Is not specified";
+					}
+
+					console.log(source.file.lastModified);
+
+					Edit.#originalModifiedElement.innerText = Format.ago(source.file.lastModified);
+					Edit.#originalModifiedElement.setAttribute('datetime', new Date(source.file.lastModified).toISOString());
+					Tooltips.fileDate.setContent({
+						'.tooltip-inner': Format.dateTime(source.file.lastModified)
+					});
+
+					//Edit.#charContainerElement.show();
+					Edit.#originalContainerElement.show();
+				}
+
+				if (source.metadata.cai) {
+					const cai = source.metadata.cai;
+
+					if (cai.avatar && !source.image) {
+						Loader.image(`https://characterai.io/i/400/static/avatars/${cai.avatar}`).then(i => {
+							Edit.#showImage(Edit.#convertImage(i), `${source.character.name} avatar`);
+						});
+					}
+
+					if (cai.id) {
+						Edit.#caiLinkElement.innerText = source.character.name;
+						Edit.#caiLinkElement.href = `https://beta.character.ai/chat?char=${cai.id}`;
+						Edit.#caiLinkElement.closest('.row').show();
+					}
+
+					if (cai.visibility) {
+						Edit.#caiVisibilityElement.innerText = Format.capitalize(cai.visibility.toLowerCase());
+						Edit.#caiVisibilityElement.closest('.row').show();
+					}
+
+					if (cai.interactions) {
+						Edit.#caiInteractionsElement.innerText = cai.interactions.toLocaleString();
+						Edit.#caiInteractionsElement.closest('.row').show();
+					}
+
+					if (cai.categories.length > 0) {
+						Edit.#caiCategoriesElement.innerHTML = cai.categories.join('<br>');
+						Edit.#caiCategoriesElement.closest('.row').show();
+					}
+
+					if (cai.imageGeneration !== undefined) {
+						Edit.#caiImageGenerationElement.innerHTML = cai.imageGeneration ? 'Enabled' : 'Disabled';
+						Edit.#caiImageGenerationElement.closest('.row').show();
+					}
+
+					Edit.#caiContainerElement.show();
+				}
+
+				Edit.#nameElement.value = source.character.name || '';
+				Edit.#personalityElement.value = source.character.personality || '';
+				Edit.#greetingElement.value = source.character.greeting || '';
+				Edit.#summaryElement.value = source.character.summary || '';
+				Edit.#scenarioElement.value = source.character.scenario || '';
+				Edit.#examplesElement.value = source.character.examples || ''; //<START>
+				Edit.#creatorElement.value = source.character.creator || '';
+				Edit.#rentryElement.value = source.character.rentry || '';
+				Edit.#commentElement.value = source.character.comment || '';
+				Edit.#talkativenessElement.value = source.character.talkativeness || '';
+				Edit.#characternoteElement.value = source.character.character_note || '';
+				Edit.#characternotedepthElement.value = source.character.character_note_depth || '';
+				Edit.#systempromptElement.value = source.character.system_prompt || '';
+				Edit.#posthistoryinstructionsElement.value = source.character.post_history_instructions  || '';
+				Edit.#versionElement.value = source.character.version || '';
+				Edit.#tagsElement.value = source.character.tags || '';
+
+				Edit.#nameElement_alt.value = source.character.name_alt || '';
+				Edit.#personalityElement_alt.value = source.character.personality_alt || '';
+				Edit.#greetingElement_alt.value = source.character.greeting_alt || '';
+				Edit.#summaryElement_alt.value = source.character.summary_alt || '';
+				Edit.#scenarioElement_alt.value = source.character.scenario_alt || '';
+				Edit.#examplesElement_alt.value = source.character.examples_alt || ''; //<START>
+				Edit.#creatorElement_alt.value = source.character.creator_alt || '';
+				Edit.#rentryElement_alt.value = source.character.rentry_alt || '';
+				Edit.#commentElement_alt.value = source.character.comment_alt || '';
+				Edit.#talkativenessElement_alt.value = source.character.talkativeness_alt || '';
+
+				Edit.#characternoteElement_alt.value = source.character.character_note_alt || '';
+				Edit.#characternotedepthElement_alt.value = source.character.character_note_depth_alt || '';
+				Edit.#systempromptElement_alt.value = source.character.system_prompt_alt || '';
+				Edit.#posthistoryinstructionsElement_alt.value = source.character.post_history_instructions_alt  || '';
+
+				Edit.#versionElement_alt.value = source.character.version_alt || '';
+				Edit.#tagsElement_alt.value = source.character.tags_alt || '';
+
+				Accordions.lock(false);
+				Accordions.edit.show();
+
+				Tokenizer.update();
+				TextareaAutoSize.update();
+
+				Edit.#nameElement.focus();
+			}
+
+			// TODO: Cleanup
+			constructor(source) {
+				document.getElementById('edit-image-add').addEventListener('dragover', e => {
+					e.preventDefault();
+
+					if (e.dataTransfer.items[0].kind === 'file' && e.dataTransfer.items[0].type.startsWith('image/')) {
+						e.dataTransfer.effectAllowed = 'move';
+						e.dataTransfer.dropEffect = 'move';
+
+						document.getElementById('edit-image-add').classList.add('hover');
+					} else {
+						e.dataTransfer.effectAllowed = 'none';
+						e.dataTransfer.dropEffect = 'none';
+
+						document.getElementById('edit-image-add').classList.remove('hover');
+					}
+				});
+
+				document.getElementById('edit-image-add').addEventListener('dragleave', e => {
+					e.preventDefault();
+
+					document.getElementById('edit-image-add').classList.remove('hover');
+				});
+
+				document.getElementById('edit-image-add').addEventListener('drop', async e => {
+					e.preventDefault();
+
+					document.getElementById('edit-image-add').classList.remove('hover');
+
+					if (!e.dataTransfer.files || e.dataTransfer.files.length < 1) return;
+
+					const image = await Loader.image(URL.createObjectURL(e.dataTransfer.files[0]));
+
+					Edit.#showImage(Edit.#convertImage(image), e.dataTransfer.files[0].name);
+				});
+
+				document.getElementById('edit-image-add').addEventListener('click', e => {
+					e.preventDefault();
+
+					document.getElementById('image').click();
+				});
+
+				document.getElementById('image').addEventListener('change', async e => {
+					if (!e.target.files || e.target.files.length < 1) return;
+
+					const image = await Loader.image(URL.createObjectURL(e.target.files[0]));
+
+					Edit.#showImage(Edit.#convertImage(image), e.target.files[0].name);
+				});
+
+				// Localstorage saving on closing the window
+				window.addEventListener('beforeunload', (e) => {
+					Edit.saveDataInLocalStorage();
+				});
+
+				// old update version
+				// this.element_id.forEach(id => {
+				// 	document.getElementById(id).addEventListener('change', (e) => {
+				// 		Edit.saveDataInLocalStorage();
+				// 	});
+				// });
+			}
+		}
+
+		class Exporter {
+			// TODO: Populate
+			static #metadata = {
+				metadata: {
+					version: 1,
+					created: Date.now(),
+					modified: Date.now(),
+					source: null,
+					tool: {
+						name: APP,
+						version: VER,
+						//url: 'https://zoltanai.github.io/character-editor/'
+						//url: 'https://avakson.github.io/character-editor/'
+						url: 'https://desune.moe/aichared/'
+					}
+				}
+			};
+
+			static #downloadFile(file) {
+				const link = window.URL.createObjectURL(file);
+
+				const a = document.createElement('a');
+				a.setAttribute('download', file.name);
+				a.setAttribute('href', link);
+				a.click();
+			}
+
+			static Gradio() {
+				return {
+//					char_name: document.getElementById('edit-name').value.trim() || '',
+//					char_greeting: document.getElementById('edit-greeting').value.trim() || '',
+				};
+			}
+
+//			static Tavern() {
+//				const messages = document.getElementById('edit-greeting'); document.getElementById('alternate-greeting-1'); document.getElementById('alternate-greeting-2'); document.getElementById('//alternate-greeting-3');
+//				const fm = document.getElementById('edit-greeting');
+//				const fm1 = document.getElementById('alternate-greeting-1');
+//				const fm2 = document.getElementById('alternate-greeting-2');
+//				const fm3 = document.getElementById('alternate-greeting-3');
+//
+//				var array = []; // создаем пустой массив
+//				array.push (document.getElementById ("alternate-greeting-1").value); // добавляем значение из первого textarea
+//				array.push (document.getElementById ("alternate-greeting-2").value); // добавляем значение из второго textarea
+//				array.push (document.getElementById ("alternate-greeting-3").value); // добавляем значение из третьего textarea
+//
+//				return {
+//					name: document.getElementById('edit-name').value.trim() || '',
+//					description: document.getElementById('edit-personality').value.trim() || '',
+//					first_mes: document.getElementById('edit-greeting').value.trim() || '',
+//					alternate_greetings: array,
+//					personality: document.getElementById('edit-summary').value.trim() || '',
+//					scenario: document.getElementById('edit-scenario').value.trim() || '',
+//					mes_example: document.getElementById('edit-examples').value.trim() || '',
+//					creator: document.getElementById('edit-creator').value.trim() || '',
+//					creator_notes: document.getElementById('edit-comment').value.trim() || '',
+//				};
+//			}
+
+//			static #metadata = {
+//				metadata: {
+//					version: 1,
+//					created: Date.now(),
+//					modified: Date.now(),
+//					source: null,
+//					tool: {
+//						name: APP,
+//						version: VER,
+//						url: 'https://zoltanai.github.io/character-editor/'
+//					}
+//				}
+//			};
+
+
+			static Tavern() {
+//				const messages = document.getElementById('edit-greeting'); document.getElementById('alternate-greeting-1'); document.getElementById('alternate-greeting-2'); document.getElementById('//alternate-greeting-3');
+//				const fm = document.getElementById('edit-greeting');
+//				const fm1 = document.getElementById('alternate-greeting-1');
+//				const fm2 = document.getElementById('alternate-greeting-2');
+//				const fm3 = document.getElementById('alternate-greeting-3');
+
+//				var array = []; // создаем пустой массив
+//					array.push (document.getElementById ("alternate-greeting-1").value); // добавляем значение из первого textarea
+//					array.push (document.getElementById ("alternate-greeting-2").value); // добавляем значение из второго textarea
+//					array.push (document.getElementById ("alternate-greeting-3").value); // добавляем значение из третьего textarea
+
+				var alternate_greetings_array = [
+					document.getElementById("alternate-greeting-1").value,
+					document.getElementById("alternate-greeting-2").value,
+					document.getElementById("alternate-greeting-3").value,
+					document.getElementById("alternate-greeting-4").value
+				].filter(function(value) {
+					return value !== "";
+				});
+
+	//			var tags_array = [
+	//				document.getElementById('edit-tags')
+	//			].filter(function(value) {
+	//				return value !== "";
+	//			});
+
+
+				// Get the input element
+				const input = document.getElementById('edit-tags');
+				// Get the tags
+				const tags = input.value.split(',');
+				// Wrap each tag in quotes
+				const quotedTags = tags.map(tag => `"${tag.trim()}"`);
+				// Join the tags with commas
+				//const tagsString = quotedTags.join(', ');
+				const tags_array = tags.map(tag => tag.trim());
+				// Output the tags
+				//console.log(`"tags": [${tagsString}]`);
+
+
+			//#detectFormats(json) {
+			//	const checkProperties = (properties, obj = json) => properties.every(p => obj.hasOwnProperty(p));
+//
+			//	if (checkProperties(['char_name', 'char_persona', 'char_greeting'])) this.formats.push(JsonFormats.TextGenerationCharacter);
+			//	if (checkProperties(['name', 'description', 'first_mes'])) this.formats.push(JsonFormats.TavernCharacter);
+			//	if (json.character && checkProperties(['name', 'title', 'description', 'greeting', 'definition'], json.character)) this.formats.push(JsonFormats.CaiCharacter);
+			//	if (json.info && json.info.character && checkProperties(['name', 'title', 'description', 'greeting'], json.info.character)) this.formats.push(JsonFormats.CaiHistory);
+			//}
+
+
+				return {
+					name: document.getElementById('edit-name').value.trim() || '',
+					description: document.getElementById('edit-personality').value.trim() || '',
+					first_mes: document.getElementById('edit-greeting').value.trim() || '',
+					personality: document.getElementById('edit-summary').value.trim() || '',
+					scenario: document.getElementById('edit-scenario').value.trim() || '',
+					mes_example: document.getElementById('edit-examples').value.trim() || '',
+					spec:"chara_card_v2",
+					spec_version:"2.0",
+					data: {
+						name: document.getElementById('edit-name').value.trim() || '',
+						description: document.getElementById('edit-personality').value.trim() || '',
+						first_mes: document.getElementById('edit-greeting').value.trim() || '',
+						alternate_greetings: alternate_greetings_array,
+						personality: document.getElementById('edit-summary').value.trim() || '',
+						scenario: document.getElementById('edit-scenario').value.trim() || '',
+						mes_example: document.getElementById('edit-examples').value.trim() || '',
+						creator: document.getElementById('edit-creator').value.trim() || '',
+
+						extensions: {
+							talkativeness: document.getElementById('edit-talkativeness').value.trim() || '',
+							depth_prompt: {
+								prompt: document.getElementById('edit-character-note').value.trim() || '',
+								depth: document.getElementById('edit-character-note-depth').value.trim() || '',
+								//depth: JSON.parse(document.getElementById('edit-character-note-depth').value.trim()) || '',
+							}
+						},
+
+						system_prompt: document.getElementById('edit-system-prompt').value.trim() || '',
+						post_history_instructions: document.getElementById('edit-post-history-instructions').value.trim() || '',
+
+						creator_notes: document.getElementById('edit-comment').value.trim() || '',
+						character_version: document.getElementById('edit-version').value.trim() || '',
+						tags: tags_array,
+					}
+				};
+			}
+
+			static Alternative() {
+
+				var alternate_greetings_array2 = [
+					document.getElementById("alternate-greeting-alt-1").value,
+					document.getElementById("alternate-greeting-alt-2").value,
+					document.getElementById("alternate-greeting-alt-3").value,
+					document.getElementById("alternate-greeting-alt-4").value
+				].filter(function(value) {
+					return value !== "";
+				});
+
+				const input = document.getElementById('edit-tags-alt');
+				const tags = input.value.split(',');
+				const quotedTags = tags.map(tag => `"${tag.trim()}"`);
+				const tags_array = tags.map(tag => tag.trim());
+
+				return {
+				alternative: {
+					name_alt: document.getElementById('edit-name-alt').value.trim() || '',
+					description_alt: document.getElementById('edit-personality-alt').value.trim() || '',
+					first_mes_alt: document.getElementById('edit-greeting-alt').value.trim() || '',
+					alternate_greetings_alt: alternate_greetings_array2,
+					personality_alt: document.getElementById('edit-summary-alt').value.trim() || '',
+					scenario_alt: document.getElementById('edit-scenario-alt').value.trim() || '',
+					mes_example_alt: document.getElementById('edit-examples-alt').value.trim() || '',
+					creator_alt: document.getElementById('edit-creator-alt').value.trim() || '',
+
+					extensions_alt: {
+						talkativeness_alt: document.getElementById('edit-talkativeness-alt').value.trim() || '',
+						depth_prompt_alt: {
+							prompt_alt: document.getElementById('edit-character-note-alt').value.trim() || '',
+							depth_alt: document.getElementById('edit-character-note-depth-alt').value.trim() || '',
+							//depth_alt: JSON.parse(document.getElementById('edit-character-note-depth-alt').value.trim()) || '',
+						}
+					},
+
+					system_prompt_alt: document.getElementById('edit-system-prompt-alt').value.trim() || '',
+					post_history_instructions_alt: document.getElementById('edit-post-history-instructions-alt').value.trim() || '',
+
+					creator_notes_alt: document.getElementById('edit-comment-alt').value.trim() || '',
+					character_version_alt: document.getElementById('edit-version-alt').value.trim() || '',
+					tags_alt: tags_array,
+
+					//description_rus: document.getElementById('edit-personality-rus').value.trim() || '',
+					}
+				};
+			}
+
+			static Misc() {
+				return {
+					misc: {
+						rentry: document.getElementById('edit-rentry').value.trim() || '',
+						rentry_alt: document.getElementById('edit-rentry-alt').value.trim() || '',
+					}
+				};
+			}
+
+			// TODO: Filename
+			static Json(data) {
+				const object = {
+					...data,
+					...Exporter.#metadata
+				};
+
+				const file = new File([JSON.stringify(object, undefined, '\t')], (data.char_name || data.name || 'character') + '.json', { type: 'application/json;charset=utf-8' });
+
+				Exporter.#downloadFile(file);
+			}
+
+			static async Png(data) {
+				const object = {
+					...data,
+					...Exporter.#metadata
+				};
+
+				const json = JSON.stringify(object, undefined, '\t');
+
+				const request = await fetch(document.getElementById('edit-image').src);
+				const blob = await request.blob();
+
+				const png = Png.Generate(await blob.arrayBuffer(), json);
+
+				//const file = new File([png], (data.char_name || data.name || 'character') + '.card.png', { type: 'image/png' });
+				const file = new File([png], (data.char_name || data.name || 'character') + '.card.png', { type: 'image/png' });
+
+				Exporter.#downloadFile(file);
+			}
+		}
+
+		class Export {
+			constructor() {
+				document.getElementById('export-json').addEventListener('click', () => {
+					try {
+						Exporter.Json({
+//							...Exporter.Gradio(),
+							...Exporter.Tavern(),
+							...Exporter.Alternative(),
+							...Exporter.Misc()
+						});
+					} catch (ex) {
+						Exception.show(ex);
+					}
+				});
+
+				document.getElementById('export-json-gradio').addEventListener('click', e => {
+					e.preventDefault();
+
+					try {
+						Exporter.Json(Exporter.Gradio());
+					} catch (ex) {
+						Exception.show(ex);
+					}
+				});
+
+				document.getElementById('export-json-tavern').addEventListener('click', e => {
+					e.preventDefault();
+
+					try {
+						Exporter.Json(Exporter.Tavern());
+					} catch (ex) {
+						Exception.show(ex);
+					}
+				});
+
+			//	document.getElementById('export-png').addEventListener('click', async () => {
+			//		try {
+			//			await Exporter.Png(Exporter.Tavern());
+			//		} catch (ex) {
+			//			Exception.show(ex);
+			//		}
+			//	});
+
+				document.getElementById('export-png').addEventListener('click', async () => {
+				try {
+					await Exporter.Png({
+						...Exporter.Tavern(),
+						...Exporter.Alternative(),
+						...Exporter.Misc(),
+					});
+					} catch (ex) {
+						Exception.show(ex);
+					}
+				});
+			}
+		}
+
+		// Entrypoint
+		(async () => {
+			// Initialize visual elements
+			new Popovers();
+			new Tooltips();
+			new Accordions();
+			new Tokenizer();
+			new TextareaAutoSize();
+
+			// Disable form submission
+			document.querySelectorAll('form').forEach(el => {
+				el.addEventListener('submit', e => {
+					e.preventDefault();
+					e.stopPropagation();
+				});
+			});
+
+			const load = new Load();
+			const edit = new Edit();
+			new Export();
+
+			// New character
+			load.addEventListener('create', () => {
+				edit.load(new Source());
+			});
+
+			// Load character
+			load.addEventListener('load', async e => {
+				try {
+					edit.load(await Source.fromFile(e.detail.file));
+				} catch (ex) {
+					if (ex instanceof JsonParseError) {
+						Warning.show('Invalid JSON File', 'The file you have selected is not valid JSON format, please check the file and try again.', ex);
+					} else if (ex instanceof PngFormatError) {
+						Warning.show('Invalid PNG File', 'The file you have selected is not a valid PNG file, please make sure the file is actually in PNG format and try again.', ex);
+					} else if (ex instanceof PngDecodeError) {
+						Warning.show('Corrupt PNG File', 'The PNG file you have selected is corrupt, please make sure the file is a valid PNG and try again.', ex);
+					} else if (ex instanceof PngInvalidCharacterError) {
+						Warning.show('Corrupt Character Card Image', 'The PNG file you have selected contains corrupt character data.<br>Try re-downloading the original Character Card file if possible and make sure you do not manually edit the file.', ex);
+					} else if (ex instanceof PngMissingCharacterError) {
+						Warning.show('Invalid Character Card Image', 'The file you have selected is a plain PNG file and does not contain any character data.<br>Try re-downloading the original Character Card file if possible and make sure you do not manually edit the file.', ex);
+					} else if (ex instanceof JsonUnknownFormatError) {
+						Warning.show('Unknown JSON Format', 'The file you have selected is in a JSON format not supported by this editor.<br>If you think that your file is a valid character definition, please click the "Details" button and get in touch so support for it can be added.', ex);
+					} else {
+						Exception.show(ex);
+					}
+				}
+			});
+
+			// Restore character
+			load.addEventListener('restore', () => {
+				edit.load(new Source());
+				Edit.loadDataFromLocalStorage();
+				TextareaAutoSize.update();
+				Tokenizer.update();
+			});
+		})();
+	</script>
+
+<!--<script src="auto-resize-textarea.js"></script>
+<script>
+	autoResizeTextarea(document.querySelectorAll("textarea.auto-resize"), { maxHeight: 640 })
+</script>
+<script src="upload.js"></script>
+
+<script>
+window.onload = (event) => {
+    var toastLiveExample = document.getElementById('toast')
+    var toast = new bootstrap.Toast(toastLiveExample)
+    toast.show()
+}
+</script>-->
+
+<script>
+$('a[data-toggle="tab"]').on('shown.bs.tab', function (evt) {
+  var anchor = $(evt.target).attr('href');
+  alert("TAB SHOWN = "+anchor);
+  // take action based on what tab was shown
+  if (anchor === "#some_special_tab_anchor") {
+    // do my special thing :)
+  }
+});
+</script>
+
+<script>
+(function(){
+
+    "use strict"
+
+    
+    // Plugin Constructor
+    var TagsInput = function(opts){
+        this.options = Object.assign(TagsInput.defaults , opts);
+        this.init();
+    }
+
+    // Initialize the plugin
+    TagsInput.prototype.init = function(opts){
+        this.options = opts ? Object.assign(this.options, opts) : this.options;
+
+        if(this.initialized)
+            this.destroy();
+            
+        if(!(this.orignal_input = document.getElementById(this.options.selector)) ){
+            console.error("tags-input couldn't find an element with the specified ID");
+            return this;
+        }
+
+        this.arr = [];
+        this.wrapper = document.createElement('div');
+        this.input = document.createElement('input');
+        init(this);
+        initEvents(this);
+
+        this.initialized =  true;
+        return this;
+    }
+
+    // Add Tags
+    TagsInput.prototype.addTag = function(string){
+
+        if(this.anyErrors(string))
+            return ;
+
+        this.arr.push(string);
+        var tagInput = this;
+
+        var tag = document.createElement('span');
+        tag.className = this.options.tagClass;
+        tag.innerText = string;
+
+        var closeIcon = document.createElement('a');
+        closeIcon.innerHTML = '&times;';
+        
+        // delete the tag when icon is clicked
+        closeIcon.addEventListener('click' , function(e){
+            e.preventDefault();
+            var tag = this.parentNode;
+
+            for(var i =0 ;i < tagInput.wrapper.childNodes.length ; i++){
+                if(tagInput.wrapper.childNodes[i] == tag)
+                    tagInput.deleteTag(tag , i);
+            }
+        })
+
+
+        tag.appendChild(closeIcon);
+        this.wrapper.insertBefore(tag , this.input);
+        this.orignal_input.value = this.arr.join(',');
+
+        return this;
+    }
+
+    // Delete Tags
+    TagsInput.prototype.deleteTag = function(tag , i){
+        tag.remove();
+        this.arr.splice( i , 1);
+        this.orignal_input.value =  this.arr.join(',');
+        return this;
+    }
+
+    // Make sure input string have no error with the plugin
+    TagsInput.prototype.anyErrors = function(string){
+        if( this.options.max != null && this.arr.length >= this.options.max ){
+            console.log('max tags limit reached');
+            return true;
+        }
+        
+        if(!this.options.duplicate && this.arr.indexOf(string) != -1 ){
+            console.log('duplicate found " '+string+' " ')
+            return true;
+        }
+
+        return false;
+    }
+
+    // Add tags programmatically 
+    TagsInput.prototype.addData = function(array){
+        var plugin = this;
+        
+        array.forEach(function(string){
+            plugin.addTag(string);
+        })
+        return this;
+    }
+
+    // Get the Input String
+    TagsInput.prototype.getInputString = function(){
+        return this.arr.join(',');
+    }
+
+
+    // destroy the plugin
+    TagsInput.prototype.destroy = function(){
+        this.orignal_input.removeAttribute('hidden');
+
+        delete this.orignal_input;
+        var self = this;
+        
+        Object.keys(this).forEach(function(key){
+            if(self[key] instanceof HTMLElement)
+                self[key].remove();
+            
+            if(key != 'options')
+                delete self[key];
+        });
+
+        this.initialized = false;
+    }
+
+    // Private function to initialize the tag input plugin
+    function init(tags){
+        tags.wrapper.append(tags.input);
+        tags.wrapper.classList.add(tags.options.wrapperClass);
+        tags.orignal_input.setAttribute('hidden' , 'true');
+        tags.orignal_input.parentNode.insertBefore(tags.wrapper , tags.orignal_input);
+    }
+
+    // initialize the Events
+    function initEvents(tags){
+        tags.wrapper.addEventListener('click' ,function(){
+            tags.input.focus();           
+        });
+        
+
+        tags.input.addEventListener('keydown' , function(e){
+            var str = tags.input.value.trim(); 
+
+            if( !!(~[9 , 13 , 188, 191].indexOf( e.keyCode ))  )
+            {
+                e.preventDefault();
+                tags.input.value = "";
+                if(str != "")
+                    tags.addTag(str);
+            }
+
+        });
+    }
+
+
+    // Set All the Default Values
+    TagsInput.defaults = {
+        selector : '',
+        wrapperClass : 'tags-input-wrapper',
+        tagClass : 'tag',
+        max : null,
+        duplicate: false
+    }
+
+    window.TagsInput = TagsInput;
+
+})();
+
+// var tagInput1 = new TagsInput({
+//            selector: 'edit-tags',
+//            duplicate : false,
+//            max : 10
+//        });
+//        //tagInput1.addData(['Tag1' , 'Tag2'])
+</script>
+
+<!-- LIVE TOAST -->
+
+<!--script>
+window.onload = (event) => {
+  let myAlert = document.querySelectorAll('.toast')[0];
+  if (myAlert) {
+    let bsAlert = new bootstrap.Toast(myAlert);
+    bsAlert.show();
+  }
+}
+</script-->
+
+<script>
+if (window.innerWidth > 767) {
+	document.addEventListener('DOMContentLoaded', (event) => {
+	  let myAlert = document.getElementById('toastTokenCounter'); // Get the Toast element
+	  let bsAlert;
+
+	  // Check if Toast has already been initialized
+	  if (!myAlert.classList.contains('show')) {
+	    bsAlert = new bootstrap.Toast(myAlert, {
+	      autohide: false // Ensure the toast doesn't auto-hide
+	    });
+	  }
+
+	  // Listen for the 'shown.bs.collapse' event on the accordion
+	  document.getElementById('accordion').addEventListener('shown.bs.collapse', function (e) {
+	    // Check if the 'accordion-edit' panel is the one being opened and if Toast is not already shown
+	    if (e.target.id === 'accordion-edit' && !myAlert.classList.contains('show')) {
+	      bsAlert && bsAlert.show(); // Show the toast when 'accordion-edit' is opened if it's initialized
+	    }
+	  });
+	});
+}
+</script>
+
+<script>
+if (window.innerWidth > 767) {
+	document.addEventListener('DOMContentLoaded', (event) => {
+	  let myAlert = document.getElementById('toastCheatsheet'); // Get the Toast element
+	  let bsAlert;
+
+	  // Check if Toast has already been initialized
+	  if (!myAlert.classList.contains('show')) {
+	    bsAlert = new bootstrap.Toast(myAlert, {
+	      autohide: false // Ensure the toast doesn't auto-hide
+	    });
+	  }
+
+	  // Listen for the 'shown.bs.collapse' event on the accordion
+	  document.getElementById('accordion').addEventListener('shown.bs.collapse', function (e) {
+	    // Check if the 'accordion-edit' panel is the one being opened and if Toast is not already shown
+	    if (e.target.id === 'accordion-edit' && !myAlert.classList.contains('show')) {
+	      bsAlert && bsAlert.show(); // Show the toast when 'accordion-edit' is opened if it's initialized
+	    }
+	  });
+	});
+}
+</script>
+
+<!--script>
+if (window.innerWidth > 767) {
+	document.addEventListener('DOMContentLoaded', (event) => {
+	  let myAlert = document.getElementById('toastDraft'); // Get the Toast element
+	  let bsAlert;
+
+	  // Check if Toast has already been initialized
+	  if (!myAlert.classList.contains('show')) {
+	    bsAlert = new bootstrap.Toast(myAlert, {
+	      autohide: false // Ensure the toast doesn't auto-hide
+	    });
+	  }
+
+	  // Listen for the 'shown.bs.collapse' event on the accordion
+	  document.getElementById('accordion').addEventListener('shown.bs.collapse', function (e) {
+	    // Check if the 'accordion-edit' panel is the one being opened and if Toast is not already shown
+	    if (e.target.id === 'accordion-edit' && !myAlert.classList.contains('show')) {
+	      bsAlert && bsAlert.show(); // Show the toast when 'accordion-edit' is opened if it's initialized
+	    }
+	  });
+	});
+}
+</script-->
+
+<script>
+const toastTrigger = document.getElementById('toastTokenCounterBtn')
+const toastLiveExample = document.getElementById('toastTokenCounter')
+
+if (toastTrigger) {
+  const toastBootstrap = bootstrap.Toast.getOrCreateInstance(toastLiveExample)
+  toastTrigger.addEventListener('click', () => {
+    if (toastBootstrap._element.classList.contains('show')) {
+      toastBootstrap.hide();
+    } else {
+      toastBootstrap.show();
+    }
+  })
+}
+</script>
+
+<script>
+const toastTrigger2 = document.getElementById('toastCheatsheetBtn')
+const toastLiveExample2 = document.getElementById('toastCheatsheet')
+
+if (toastTrigger2) {
+  const toastBootstrap2 = bootstrap.Toast.getOrCreateInstance(toastLiveExample2)
+  toastTrigger2.addEventListener('click', () => {
+    if (toastBootstrap2._element.classList.contains('show')) {
+      toastBootstrap2.hide();
+    } else {
+      toastBootstrap2.show();
+    }
+  })
+}
+</script>
+
+<script>
+const toastTrigger3 = document.getElementById('toastDraftBtn')
+const toastLiveExample3 = document.getElementById('toastDraft')
+
+if (toastTrigger3) {
+  const toastBootstrap3 = bootstrap.Toast.getOrCreateInstance(toastLiveExample3)
+  toastTrigger3.addEventListener('click', () => {
+    if (toastBootstrap3._element.classList.contains('show')) {
+      toastBootstrap3.hide();
+    } else {
+      toastBootstrap3.show();
+    }
+  })
+}
+</script>
+
+<script>
+function updateDynCss() {
+  var parentHeight = computeHeight();
+  var style = ":root{--hex-parent-height:" + parentHeight + "px;}";
+  $("#my-dyn-css").empty().html(style);
+}
+</script>
+
+<!-- Quick inputs for predefined values like {{char}} and {{user}} -->
+<script>
+document.addEventListener('DOMContentLoaded', (event) => {
+  let currentInput = null;
+  let historyStack = {};
+  let redoStack = {};
+
+  document.querySelectorAll('input[type="text"], textarea').forEach((element) => {
+    element.addEventListener('focus', function() {
+      currentInput = this;
+      if (!historyStack.hasOwnProperty(this.id)) {
+        historyStack[this.id] = [];
+        redoStack[this.id] = [];
+      }
+      historyStack[this.id].push(this.value);
+      redoStack[this.id].length = 0; // Clear the redo stack on new focus
+    });
+
+    element.addEventListener('keydown', function(event) {
+      if ((event.ctrlKey || event.metaKey) && (event.key === 'z' || event.keyCode === 90)) {
+        if (historyStack[this.id].length > 1) {
+          redoStack[this.id].push(historyStack[this.id].pop());
+          this.value = historyStack[this.id][historyStack[this.id].length - 1];
+          event.preventDefault();
+        }
+      } else if ((event.ctrlKey || event.metaKey) && (event.key === 'y' | event.keyCode === 89)) {
+        if (redoStack[this.id].length > 0) {
+          this.value = redoStack[this.id].pop();
+          historyStack[this.id].push(this.value);
+          event.preventDefault();
+        }
+      } else if (!event.ctrlKey && !event.metaKey) {
+        historyStack[this.id].push(this.value);
+      }
+    });
+  });
+
+  document.querySelectorAll('input[type=button]').forEach((button) => {
+    button.addEventListener('click', function() {
+      if (currentInput) {
+        let cursorPosStart = currentInput.selectionStart;
+        let cursorPosEnd = currentInput.selectionEnd;
+        let v = currentInput.value;
+        let textBefore = v.substring(0, cursorPosStart);
+        let textAfter = v.substring(cursorPosEnd, v.length);
+
+        currentInput.value = textBefore + this.value + textAfter;
+
+        let newPos = cursorPosStart + this.value.length;
+        currentInput.focus({preventScroll: true});
+        currentInput.setSelectionRange(newPos, newPos);
+
+        // Update stacks
+        historyStack[currentInput.id][historyStack[currentInput.id].length - 1] = currentInput.value;
+      }
+    });
+  });
+});
+</script>
+
+<!-- Automatically populate the "Creator" field in both versions -->
+<script>
+// Get the input fields
+const creatorInput = document.getElementById("edit-creator");
+const creatorAltInput = document.getElementById("edit-creator-alt");
+
+const rentryInput = document.getElementById("edit-rentry");
+const rentryAltInput = document.getElementById("edit-rentry-alt");
+
+const depthInput = document.getElementById("edit-character-note-depth");
+const depthAltInput = document.getElementById("edit-character-note-depth-alt");
+
+const talkativenessInput = document.getElementById("edit-talkativeness");
+const talkativenessAltInput = document.getElementById("edit-talkativeness-alt");
+
+// Add event listeners to the input fields
+creatorInput.addEventListener("input", () => {
+  creatorAltInput.value = creatorInput.value;
+});
+
+creatorAltInput.addEventListener("input", () => {
+  creatorInput.value = creatorAltInput.value;
+});
+
+rentryInput.addEventListener("input", () => {
+  rentryAltInput.value = rentryInput.value;
+});
+
+rentryAltInput.addEventListener("input", () => {
+  rentryInput.value = rentryAltInput.value;
+});
+
+depthInput.addEventListener("input", () => {
+  depthAltInput.value = depthInput.value;
+});
+
+depthAltInput.addEventListener("input", () => {
+  depthInput.value = depthAltInput.value;
+});
+
+talkativenessInput.addEventListener("input", () => {
+  talkativenessAltInput.value = talkativenessInput.value;
+});
+
+talkativenessAltInput.addEventListener("input", () => {
+  talkativenessInput.value = talkativenessAltInput.value;
+});
+</script>
+
+<!-- Swap "Creator" and Rentry fields byt clicking on label -->
+<script>
+function swapInputs() {
+	var creator = document.querySelector('label[for="edit-creator-noselect"]');
+  var rentry = document.querySelector('label[for="edit-rentry"]');
+	var creatorInput = document.getElementById("edit-creator");
+  var rentryInput = document.getElementById("edit-rentry");
+
+  if (creatorInput.style.display === "none") {
+    creator.innerHTML = `<i class="fa-solid fa-at"></i> Creator`;
+    creatorInput.style.display = "block";
+    rentryInput.style.display = "none";
+  } else {
+    creator.innerHTML = `<i class="fa-solid fa-at"></i> Personal Page / Rentry`;
+    creatorInput.style.display = "none";
+    rentryInput.style.display = "block";
+  }
+
+  // Add the following line to animate the switch
+  creator.animate([{opacity: '0'}, {opacity: '1'}], {duration: 250, fill: 'forwards'});
+  rentry.animate([{opacity: '0'}, {opacity: '1'}], {duration: 250, fill: 'forwards'});
+  creatorInput.animate([{opacity: '0'}, {opacity: '1'}], {duration: 250, fill: 'forwards'});
+  rentryInput.animate([{opacity: '0'}, {opacity: '1'}], {duration: 250, fill: 'forwards'});
+}
+</script>
+
+<script>
+function swapInputs_alt() {
+	var creator_alt = document.querySelector('label[for="edit-creator-alt-noselect"]');
+  var rentry_alt = document.querySelector('label[for="edit-rentry-alt"]');
+	var creatorInput_alt = document.getElementById("edit-creator-alt");
+  var rentryInput_alt = document.getElementById("edit-rentry-alt");
+
+  if (creatorInput_alt.style.display === "none") {
+    creator_alt.innerHTML = `<i class="fa-solid fa-at"></i> Автор`;
+    creatorInput_alt.style.display = "block";
+    rentryInput_alt.style.display = "none";
+  } else {
+    creator_alt.innerHTML = `<i class="fa-solid fa-at"></i> Страница / Rentry`;
+    creatorInput_alt.style.display = "none";
+    rentryInput_alt.style.display = "block";
+  }
+
+  // Add the following line to animate the switch
+  creator_alt.animate([{opacity: '0'}, {opacity: '1'}], {duration: 250, fill: 'forwards'});
+  rentry_alt.animate([{opacity: '0'}, {opacity: '1'}], {duration: 250, fill: 'forwards'});
+  creatorInput_alt.animate([{opacity: '0'}, {opacity: '1'}], {duration: 250, fill: 'forwards'});
+  rentryInput_alt.animate([{opacity: '0'}, {opacity: '1'}], {duration: 250, fill: 'forwards'});
+}
+</script>
+
+<!--script>
+	document.getElementById("edit-talkativeness").oninput = function() {
+  document.getElementById("spanslider").innerHTML = Number(this.value).toFixed(1);
+	document.getElementById("edit-talkativeness-alt").oninput = function() {
+  document.getElementById("spanslider-alt").innerHTML = Number(this.value).toFixed(1);
+}
+</script-->
+
+<!-- Triggers AutoSize for all textareas when on tab swap by "input" event -->
+<!--script>
+// Get all the tabs
+const tabs = document.querySelectorAll('.nav-link');
+
+// Add an event listener to each tab
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    // Trigger the input event on all textareas
+    document.querySelectorAll('.auto-size').forEach(el => {
+      el.dispatchEvent(new Event('input'));
+    });
+  });
+});
+</script-->
+
+<!-- The same, but via scroll  -->
+<script>
+// Get all the tabs
+const tabs = document.querySelectorAll('.nav-link');
+
+// Add an event listener to each tab
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    // Update the height of all textareas
+    document.querySelectorAll('.auto-size').forEach(el => {
+      el.style.height = el.scrollHeight + 'px';
+    });
+  });
+});
+
+// Hide the scrollbars
+const textareas = document.querySelectorAll('.auto-size');
+
+textareas.forEach(textarea => {
+  textarea.style.overflow = 'hidden';
+});
+</script>
+
+<script>
+// Get all the carousels
+const carousels = document.querySelectorAll('.carousel');
+
+// Add an event listener to each carousel
+carousels.forEach(carousel => {
+  carousel.addEventListener('slid.bs.carousel', () => {
+    // Trigger the TextareaAutoSize function
+    TextareaAutoSize.update();
+  });
+});
+</script>
+
+<!-- Save Draft; dunno why -->
+<script>
+const date = new Date();
+const formattedDate = date.toLocaleDateString('en', {day: '2-digit', month: '2-digit', year: 'numeric'}).replace(/\//g, '.');
+const formattedTime = date.toLocaleTimeString('en', {hour: '2-digit', minute: '2-digit', hour12: false}).replace(/:/g, '-');
+const formattedDateTime = `${formattedDate}_${formattedTime}`;
+const fileName = `Draft_${formattedDateTime}.txt`;
+
+function saveTextAsFile() {
+    var textToWrite = document.getElementById('draft').value;
+    var textFileAsBlob = new Blob([textToWrite], { type: 'text/plain' });
+    var fileNameToSaveAs = fileName;
+    var downloadLink = document.createElement('a');
+    downloadLink.download = fileNameToSaveAs;
+    downloadLink.innerHTML = 'Download File';
+    if (window.webkitURL != null) {
+        downloadLink.href = window.webkitURL.createObjectURL(textFileAsBlob);
+    } else {
+        downloadLink.href = window.URL.createObjectURL(textFileAsBlob);
+        downloadLink.onclick = destroyClickedElement;
+        downloadLink.style.display = 'none';
+        document.body.appendChild(downloadLink);
+    }
+    downloadLink.click();
+}
+</script>
+
+</body>
+</html>

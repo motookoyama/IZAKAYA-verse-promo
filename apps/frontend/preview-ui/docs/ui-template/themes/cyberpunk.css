@@ -1,0 +1,22 @@
+:root{
+  /* Cyberpunk: deep blue base + violet primary + neon cyan accent */
+  --bg:#070a12; /* page background */
+  --paper:#0f1420; /* cards/header */
+  --text:#e6f0ff;
+  --muted:#96a9c2;
+  --line:rgba(0,229,255,.18);
+  --pri:#9b1bff;  /* violet */
+  --acc:#00e5ff;  /* neon cyan */
+  --ok:#22c55e; --err:#fb7185;
+  --r-sm:8px; --r-md:12px; --r-lg:16px;
+  --sh-sm:0 0 12px rgba(155,27,255,.35), 0 2px 10px rgba(0,0,0,.35);
+  --sh-md:0 0 24px rgba(0,229,255,.28), 0 12px 40px rgba(0,0,0,.5);
+}
+
+/* Stronger cyber look overrides */
+body{ background: radial-gradient(1200px 600px at 10% -10%, rgba(155,27,255,.15), transparent 60%),
+               radial-gradient(1000px 500px at 110% 0%, rgba(0,229,255,.12), transparent 55%), var(--bg) !important; }
+.ui-header{ background: color-mix(in oklab, var(--paper) 85%, #1b2030) !important; }
+.panel{ box-shadow: var(--sh-sm) !important; }
+.btn.primary{ box-shadow: var(--sh-md) !important; }
+.dropzone.drag{ box-shadow: 0 0 0 2px var(--acc) inset, 0 0 18px var(--acc); }

@@ -1,0 +1,6 @@
+:root{
+  --bg:#f7f4ea; --paper:#fffdf7; --text:#1a1a1a; --muted:#6b6056; --line:#e8e2d6;
+  --pri:#d71a1a; --acc:#c28e0e; --ok:#2e7d32; --err:#c62828;
+  --r-sm:6px; --r-md:8px; --r-lg:10px; --sh-sm:0 2px 8px rgba(80,40,20,.08); --sh-md:0 8px 28px rgba(80,40,20,.12);
+}
+

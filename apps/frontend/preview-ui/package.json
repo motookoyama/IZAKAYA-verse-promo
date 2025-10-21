@@ -1,0 +1,10 @@
+{
+  "name": "izakaya-verse-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["bff", "frontend"],
+  "scripts": {
+    "dev": "npm -w bff run dev & npm -w frontend run dev"
+  }
+}
+
