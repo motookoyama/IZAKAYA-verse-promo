@@ -8,9 +8,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    base: "/preview/",
+    base: "/IZAKAYA-verse-promo/",
     build: {
-      outDir: path.resolve(__dirname, "../public"),
+      outDir: "docs",
       emptyOutDir: true,
     },
     server: {

@@ -1,7 +1,7 @@
 name: pages build and deployment
 
 env:
-  FRONTEND_DIR: apps/frontend/preview-ui/web
+  FRONTEND_DIR: apps/frontend/preview-ui/mini-bff-express/preview-ui
   OUTPUT_DIR: docs
 
 on:
