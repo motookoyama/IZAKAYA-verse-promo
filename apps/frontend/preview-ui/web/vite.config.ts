@@ -14,6 +14,7 @@ export default defineConfig({
   build: {
     target: 'esnext',
     outDir: 'docs',
+    emptyOutDir: true,
   },
-  base: './',
+  base: '/IZAKAYA-verse-promo/',
 })

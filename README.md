@@ -85,3 +85,19 @@ docs/                           # 仕様・ノート（公開してよい範囲�
 - `.env` や秘匿ファイルが差分に含まれていない。
 - README に「Lite を最優先で公開」の方針が明記済み。
 - コミットコメント例: `feat(lite): initial publish of preview-ui (GitHub Pages)`
+
+---
+
+## 📐 重要パス宣言の基本ルール（AI / 人間共通）
+
+1. **宣言せよ**  
+   どこで build し、どこに出力するかを明記する。  
+   - 例: `FRONTEND_DIR=apps/frontend/preview-ui/web`、`OUTPUT_DIR=docs`
+2. **一貫せよ**  
+   宣言元（`env`、`repo.paths.json` など）は 1 か所に統一し、齟齬を生まない。
+3. **検証せよ**  
+   Actions で `verify-paths` 等を用意し、宣言どおりのパスが存在するか実行時に確認する。
+4. **教示せよ**  
+   README やドキュメントに宣言済みパスを記載し、人と AI の両方が参照できる状態を保つ。
+
+> 実装にあたる AI / 開発者は、この 4 原則に従い **重要パスを必ず宣言** すること。

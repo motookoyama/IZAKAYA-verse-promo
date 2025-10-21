@@ -1,4 +1,8 @@
-name: Deploy Preview UI
+name: pages build and deployment
+
+env:
+  FRONTEND_DIR: apps/frontend/preview-ui/web
+  OUTPUT_DIR: docs
 
 on:
   push:
@@ -22,20 +26,23 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: apps/frontend/preview-ui/web/package-lock.json
+          cache-dependency-path: ${{ env.FRONTEND_DIR }}/package-lock.json
 
       - name: Install dependencies
         run: npm ci
-        working-directory: apps/frontend/preview-ui/web
+        working-directory: ${{ env.FRONTEND_DIR }}
 
       - name: Build preview UI
         run: npm run build
-        working-directory: apps/frontend/preview-ui/web
+        working-directory: ${{ env.FRONTEND_DIR }}
+
+      - name: Add .nojekyll
+        run: touch ${{ env.FRONTEND_DIR }}/${{ env.OUTPUT_DIR }}/.nojekyll
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: apps/frontend/preview-ui/web/docs
+          path: ${{ env.FRONTEND_DIR }}/${{ env.OUTPUT_DIR }}
 
   deploy:
     needs: build
@@ -50,4 +57,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
