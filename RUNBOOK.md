@@ -2,6 +2,13 @@
 
 目的: このプロジェクトを「迷わず起動・停止・再開」できるようにするための短い手順書。
 
+## ディレクトリ概況（2025-10 整理）
+- フロントエンド: `apps/frontend/lite-ui`（公開対象）／`apps/frontend/preview-ui`（旧 UI）
+- Mini BFF: `apps/bff/mini`（Express。実装は別レポジトリからコピーして配置）
+- IPN サーバー: `apps/ipn`（必要時に追加）
+
+以降のスクリプトは必要に応じて新構成へ合わせて調整してください。
+
 ## よく使うコマンド
 - 起動: `scripts/start.sh`
 - 停止: `scripts/stop.sh`

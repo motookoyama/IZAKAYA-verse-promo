@@ -1,0 +1,13 @@
+{
+  "name": "izakaya-verse-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Workspace skeleton for IZAKAYA verse local development.",
+  "workspaces": [
+    "apps/frontend/lite-ui",
+    "apps/frontend/preview-ui"
+  ],
+  "scripts": {
+    "postinstall": "echo \"Run npm install inside each app directory\""
+  }
+}
