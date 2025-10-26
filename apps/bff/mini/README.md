@@ -1,29 +1,19 @@
-# apps/bff/mini
+# Mini BFF (apps/bff/mini)
 
-Mini BFF (Express/CommonJS) を配置するディレクトリです。
+Express で実装された軽量 BFF。Persona Engine との連携を担当します。
 
-## 推奨構成
-```
-apps/bff/mini/
-├── package.json
-├── tsconfig.json
-├── src/
-│   └── index.ts (Express entry)
-└── data/
+## ローカル起動
+```bash
+cd apps/bff/mini
+npm install
+PERSONA_ENGINE_URL=http://localhost:4105 npm run dev
 ```
 
-### package.json (例)
-```json
-{
-  "name": "mini-bff-express",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "nodemon --watch src --exec node --loader ts-node/esm src/index.ts",
-    "build": "tsc -p tsconfig.json",
-    "start": "node dist/index.js"
-  }
-}
-```
+## API
+- `GET /api/health`
+- `GET /api/points`
+- `GET /api/personas`
+- `GET /api/personas/:id`
+- `GET /api/emotion`
 
-実コードは `IZAKAYA verse/izakaya_lite/mini-bff-express` からコピーしてください。`RUNBOOK.md` も合わせて更新すること。
+Docker Compose を利用する場合は `apps/docker-compose.yml` の `mini-bff` サービス名で起動できます。
