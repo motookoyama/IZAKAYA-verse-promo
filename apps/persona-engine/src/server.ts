@@ -1,6 +1,6 @@
 import express from 'express';
-import { personaRoutes } from './routes/personaRoutes';
-import { emotionRoutes } from './routes/emotionRoutes';
+import { personaRoutes } from './routes/personaRoutes.js';
+import { emotionRoutes } from './routes/emotionRoutes.js';
 
 const app = express();
 app.use(express.json());

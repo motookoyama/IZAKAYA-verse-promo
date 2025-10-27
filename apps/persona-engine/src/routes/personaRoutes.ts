@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { PersonaLoader } from '../core/personaLoader';
+import { PersonaLoader } from '../core/personaLoader.js';
 
 const loader = new PersonaLoader();
 

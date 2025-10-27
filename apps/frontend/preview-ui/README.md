@@ -1,9 +1,8 @@
-# Preview UI (Legacy)
+# Preview UI (Current primary)
 
-Mini BFF に付属していた旧プレビュー UI をそのまま保存しています。
+IZAKAYA Lite の起動画面はこちらのフォルダを正とします。従来の `lite-ui` はサンプル用途に退避しました。
 
-- 本番公開は `../lite-ui/` を利用してください。
-- この UI は Express 版 Mini BFF と同じ JSON API (`/health`, `/chat`, `/wallet` ...) を参照します。
-- ビルド: `npm install && npm run build` → `docs/`
-- ローカル起動: `npm run dev`
-- 将来的に不要になったらサンプル資材としてアーカイブ可能です。
+- API 先: Mini BFF (`/health`, `/chat`, `/wallet` など)
+- ローカル開発: `npm install && npm run dev`
+- 本番ビルド: `npm run build` → `dist/`
+- Docker: 同ディレクトリの `Dockerfile` を使用してください。

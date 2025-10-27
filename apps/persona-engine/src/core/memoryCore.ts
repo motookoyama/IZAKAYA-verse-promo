@@ -1,4 +1,4 @@
-import type { MemoryEntry, MemoryState } from '../types/memory';
+import type { MemoryEntry, MemoryState } from '../types/memory.js';
 
 export class MemoryCore {
   private state: MemoryState = {

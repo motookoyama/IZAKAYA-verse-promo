@@ -3,7 +3,7 @@
 目的: このプロジェクトを「迷わず起動・停止・再開」できるようにするための短い手順書。
 
 ## ディレクトリ概況（2025-10 整理）
-- フロントエンド: `apps/frontend/lite-ui`（公開対象）／`apps/frontend/preview-ui`（旧 UI）
+- フロントエンド: `apps/frontend/preview-ui`（現行 UI）／`apps/frontend/lite-ui-sample`（サンプルのみ）
 - Mini BFF: `apps/bff/mini`（Express。実装は別レポジトリからコピーして配置）
 - IPN サーバー: `apps/ipn`（必要時に追加）
 

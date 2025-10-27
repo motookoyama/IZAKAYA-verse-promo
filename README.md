@@ -13,8 +13,8 @@ GitHub/Render/Cloud 側で迷子にならないよう、フロントエンドと
 ```
 apps/
 ├── frontend/
-│   ├── lite-ui/                # IZAKAYA Lite (Vite/React) … GitHub Pages で公開する本体
-│   └── preview-ui/             # Mini BFF に付属していた旧プレビュー UI（参考用）
+│   ├── lite-ui-sample/         # 旧Lite UIサンプル（現在は未使用、参考のみ）
+│   └── preview-ui/             # IZAKAYA Liteの現行UI（Vite/React）
 └── bff/
     └── README.md               # Mini BFF (Express) の配置ガイド / 連携手順
 
@@ -23,9 +23,8 @@ scripts/                        # ローカル開発支援スクリプト群
 RUNBOOK.md / SESSION_NOTES.md   # 手順と履歴
 ```
 
-- `apps/frontend/lite-ui` …… GitHub Pages で公開する React/Vite プロジェクト。  
-  - `npm run dev` で開発サーバー、`npm run build` で `docs/` に出力。
-- `apps/frontend/preview-ui` …… 旧 Mini BFF プレビュー UI。挙動検証用に保持。
+- `apps/frontend/lite-ui-sample` …… 旧 Lite UI のサンプルコード（現在は参考用途のみ）。
+- `apps/frontend/preview-ui` …… 現行の IZAKAYA Lite UI。本番/検証はすべてこちらを使用。
 - `apps/bff` …… Mini BFF (Express/CommonJS) を配置する場所。現在は README で外部レポジトリを案内しています。
 
 ---
@@ -34,8 +33,8 @@ RUNBOOK.md / SESSION_NOTES.md   # 手順と履歴
 
 | 区分                  | ルート                                       | 出力先 / 備考                                  |
 |-----------------------|----------------------------------------------|-----------------------------------------------|
-| Lite UI (Pages)       | `apps/frontend/lite-ui`                      | `apps/frontend/lite-ui/docs`                  |
-| Preview UI (参考)     | `apps/frontend/preview-ui`                   | `apps/frontend/preview-ui/docs`               |
+| Lite UI (Sample)      | `apps/frontend/lite-ui-sample`               | サンプル。スタックから除外。                 |
+| Preview UI (本体)     | `apps/frontend/preview-ui`                   | `apps/frontend/preview-ui/dist`               |
 | Mini BFF (REST API)   | `apps/bff/mini` *(外部レポジトリを配置)*     | `dist/` を想定。Docker/Render で起動予定。    |
 | IPN サーバー (任意)   | `apps/ipn` *(必要時に追加)*                  | `node server.js` で起動。                     |
 
@@ -46,16 +45,11 @@ RUNBOOK.md / SESSION_NOTES.md   # 手順と履歴
 ## 🛠 ローカルでの基本コマンド
 
 ```bash
-# Lite UI
-cd apps/frontend/lite-ui
-npm install
-npm run dev   # http://localhost:5173
-npm run build # docs/ 出力（Pages 用）
-
-# Preview UI
+# Preview UI（現行UI）
 cd apps/frontend/preview-ui
 npm install
 npm run dev
+npm run build # dist/ 出力（Docker/Nginx 用）
 
 # Mini BFF (コード配置後に実行)
 cd apps/bff/mini

@@ -7,18 +7,18 @@ export default defineConfig(({ mode }) => {
   const apiBase = env.VITE_API_BASE || "http://localhost:4117";
   return {
     plugins: [react()],
-    base: "/preview/",
+    base: env.VITE_APP_BASE || "./",
     build: {
-      outDir: path.resolve(__dirname, "../public"),
+      outDir: path.resolve(__dirname, "dist"),
       emptyOutDir: true,
     },
     preview: {
       host: true,
-      port: 10000,
-      allowedHosts: ["izakaya-verse-promo.onrender.com"],
+      port: Number(env.VITE_PREVIEW_PORT || 4173),
     },
     server: {
-      port: Number(env.VITE_DEV_PORT || 4173),
+      host: true,
+      port: Number(env.VITE_DEV_PORT || 5173),
       proxy: {
         "/health": apiBase,
         "/cards": apiBase,

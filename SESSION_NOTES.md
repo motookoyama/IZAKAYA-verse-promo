@@ -8,6 +8,12 @@
 - ログ/スクショの場所:
 - 次やること:
 
+## 2025-10-27 Phase 3 Docker統合ログ
+- ✅ Phase 3: Docker統合およびTX-ID Economy 実装 完了
+- 監督AI：Codex / Gemini / Ollama 連携開始
+- `/docs/IZAKAYA_phase3_final_integration.sAtd.md` を作成し、Docker構成・TX-ID実装・AI協調方針を標準化。
+- preview-ui を現行 UI として固定化し、lite-ui をサンプル扱いへ退避。README/RUNBOOK を更新。
+
 ## 2025-10-?? ローカル構成リセットメモ
 - **やったこと:** `apps/frontend/lite-ui` / `apps/frontend/preview-ui` / `apps/bff/mini` / `apps/ipn` に再整理。重要パス宣言を README / RUNBOOK / docs へ明記。
 - **気づき/問題:** GitHub / Render 側で BFF の所在が不明になりやすい → ローカルで構造を確定させてから再プッシュするフローに統一。

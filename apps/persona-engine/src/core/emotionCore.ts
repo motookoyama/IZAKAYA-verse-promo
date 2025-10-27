@@ -1,4 +1,4 @@
-import type { EmotionState } from '../types/emotion';
+import type { EmotionState } from '../types/emotion.js';
 
 export class EmotionCore {
   private state: EmotionState = {

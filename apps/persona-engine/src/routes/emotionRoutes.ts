@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { EmotionCore } from '../core/emotionCore';
+import { EmotionCore } from '../core/emotionCore.js';
 
 const emotionCore = new EmotionCore();
 export const emotionRoutes = Router();

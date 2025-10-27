@@ -1,4 +1,4 @@
-import type { Persona } from '../types/persona';
+import type { Persona } from '../types/persona.js';
 
 const seedPersonas: Persona[] = [
   {
