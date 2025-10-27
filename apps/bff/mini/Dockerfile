@@ -1,6 +1,7 @@
-FROM node:20-alpine
+FROM node:20-slim AS base
 WORKDIR /app
+COPY package*.json ./
+RUN npm install --no-audit --progress=false
 COPY . .
-RUN npm install --prefer-offline --no-audit --progress=false || npm install --no-audit --progress=false
 EXPOSE 4117
-CMD ["npm", "run", "dev"]
+CMD ["node", "server.js"]
