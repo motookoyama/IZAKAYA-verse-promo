@@ -1,0 +1,38 @@
+services:
+  persona-engine:
+    container_name: izakaya_persona_engine
+    build:
+      context: ./apps/persona-engine
+    environment:
+      PORT: 4105
+    ports:
+      - "4105:4105"
+    volumes:
+      - ./apps/persona-engine:/app
+
+  mini-bff:
+    container_name: izakaya_mini_bff
+    build:
+      context: ./apps/bff/mini
+    environment:
+      PORT: 4117
+      PERSONA_ENGINE_URL: http://persona-engine:4105
+    ports:
+      - "4117:4117"
+    volumes:
+      - ./apps/bff/mini:/app
+    depends_on:
+      - persona-engine
+
+  lite-ui:
+    container_name: izakaya_lite_ui
+    build:
+      context: ./apps/frontend/lite-ui
+    environment:
+      VITE_API_BASE_URL: http://mini-bff:4117
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./apps/frontend/lite-ui:/app
+    depends_on:
+      - mini-bff
