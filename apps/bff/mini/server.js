@@ -22,8 +22,9 @@ const IDEMPOTENCY_REGEX = /^[A-Za-z0-9_\-]{6,128}$/;
 const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "suke-nomi";
 const PAYPAL_VERIFY_URL =
   process.env.PAYPAL_VERIFY_URL || "https://ipnpb.paypal.com/cgi-bin/webscr";
-const PERSONA_ENGINE_ROOT = path.resolve(process.cwd(), "../persona-engine");
-const SOUL_CORE_DIR = path.join(PERSONA_ENGINE_ROOT, "soul-core");
+const PROJECT_ROOT = path.resolve(process.cwd(), "../../..");
+const PERSONA_ENGINE_ROOT = path.join(PROJECT_ROOT, "apps/persona-engine");
+const SOUL_CORE_DIR = path.join(PROJECT_ROOT, "apps/persona-engine/soul-core");
 const CARDS_ROOT = path.join(PERSONA_ENGINE_ROOT, "cards");
 const ENV_FILE_PATH = path.resolve(process.cwd(), ".env");
 
@@ -391,6 +392,10 @@ async function saveProviderConfig(config, options = {}) {
 }
 
 async function loadSoulCoreFiles() {
+  if (!fsSync.existsSync(SOUL_CORE_DIR)) {
+    console.warn(`[SOUL_CORE] directory not found: ${SOUL_CORE_DIR}`);
+    return [];
+  }
   try {
     const entries = await fs.readdir(SOUL_CORE_DIR, { withFileTypes: true });
     const mdFiles = entries
@@ -408,7 +413,8 @@ async function loadSoulCoreFiles() {
       }
     }
     return results;
-  } catch {
+  } catch (error) {
+    console.warn(`[SOUL_CORE] failed to read directory ${SOUL_CORE_DIR}:`, error);
     return [];
   }
 }
@@ -923,7 +929,7 @@ app.post("/chat/v1", async (req, res) => {
   try {
     const soulCoreFiles = await loadSoulCoreFiles();
     if (!soulCoreFiles.length) {
-      return res.status(500).json({ error: "soul_core_missing", detail: SOUL_CORE_DIR });
+      console.warn("[SOUL_CORE] no markdown files loaded; proceeding without soul core context");
     }
     const cardId = typeof req.body?.cardId === "string" ? req.body.cardId : null;
     const persona = await loadPersona(cardId);

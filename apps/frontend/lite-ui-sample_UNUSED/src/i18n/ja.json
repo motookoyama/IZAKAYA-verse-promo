@@ -1,0 +1,20 @@
+{
+  "title": "IZAKAYA Lite",
+  "lang": "言語",
+  "nav.collection": "キャラクターコレクション",
+  "nav.adventure": "マルチプレイヤーアドベンチャー",
+  "collection.your": "あなたのコレクション",
+  "collection.description": "冒険に備えてキャラクターを集めて育成しましょう",
+  "collection.select": "キャラクターを選ぶ",
+  "collection.start": "アドベンチャー開始",
+  "stats.players": "オンラインプレイヤー",
+  "stats.adventures": "累計冒険数",
+  "stats.characters": "保有キャラクター",
+  "chat.placeholder": "メッセージを入力してください...",
+  "chat.send": "送信",
+  "chat.typing": "AI が思考中...",
+  "chat.input.label": "メッセージ入力",
+  "chat.button": "送信",
+  "lang.japanese": "日本語",
+  "lang.english": "English"
+}

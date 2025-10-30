@@ -20,7 +20,6 @@ export default defineConfig(({ mode }) => {
       host: true,
       port: Number(env.VITE_DEV_PORT || 5173),
       proxy: {
-        "/health": apiBase,
         "/cards": apiBase,
         "/chat": apiBase,
         "/wallet": apiBase,

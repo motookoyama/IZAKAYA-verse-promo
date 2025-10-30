@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import AdminBillingPanel from "./components/AdminBillingPanel";
 import drOrbAvatar from "./assets/dr-orb.png";
 import missMadiAvatar from "./assets/miss-madi.png";
+import { clearCachedHealthUrl, getHealthUrl, resolveBffBase } from "./lib/bff";
 
 type Role = "user" | "ai";
 
@@ -45,10 +46,12 @@ type HealthStatus = {
   hostname?: string;
 };
 
+type ConnectionFailure = { url: string; detail: string };
+
 type ConnectionStatus =
-  | { state: "pending" }
+  | { state: "connecting"; attempt: number }
   | { state: "ok"; url: string; reply: string }
-  | { state: "error"; failures: { url: string; detail: string }[] };
+  | { state: "error"; attempt: number; failures: ConnectionFailure[] };
 
 type EndpointCheck = {
   endpoint: string;
@@ -66,19 +69,9 @@ type HeartbeatDebugInfo = {
   };
 };
 
-function resolveInitialBffBase(): string {
-  const raw =
-    (import.meta.env.VITE_REACT_APP_BFF_URL as string | undefined) ||
-    (import.meta.env.VITE_BFF_URL as string | undefined) ||
-    (import.meta.env.REACT_APP_BFF_URL as string | undefined);
-  const fallback = "http://localhost:4117";
-  const selected = typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : fallback;
-  return selected.replace(/\/+$/, "");
-}
-
 const normalizeBase = (value: string) => value.replace(/\/+$/, "");
 
-const BFF_BASE_URL = resolveInitialBffBase();
+const BFF_BASE_URL = resolveBffBase();
 const BFF_CANDIDATES = [BFF_BASE_URL];
 
 let resolvedBffBase = normalizeBase(BFF_BASE_URL);
@@ -90,6 +83,10 @@ const setResolvedBffBase = (value: string) => {
 
 const HEALTHCHECK_UID = "IZK_HEALTHCHECK_UI";
 const HEALTHCHECK_PROMPT = "[health-check] BFF connectivity verification";
+const MAX_CONNECTION_ATTEMPTS = 3;
+const CONNECTION_RETRY_DELAY_MS = 1000;
+const RECONNECT_DELAY_MS = 4000;
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const PAYPAL_PLANS = [
   {
@@ -305,8 +302,9 @@ const HealthBadge: React.FC<{ health?: HealthStatus; loading: boolean; error?: s
 };
 
 const ConnectionStatusPill: React.FC<{ status: ConnectionStatus }> = ({ status }) => {
-  if (status.state === "pending") {
-    return <span className="text-xs text-zinc-400">BFF接続チェック中…</span>;
+  if (status.state === "connecting") {
+    const attemptLabel = status.attempt > 0 ? `（試行${status.attempt}回目）` : "";
+    return <span className="text-xs text-amber-500">⏳ BFF接続中…{attemptLabel}</span>;
   }
   if (status.state === "ok") {
     return (
@@ -315,14 +313,15 @@ const ConnectionStatusPill: React.FC<{ status: ConnectionStatus }> = ({ status }
       </span>
     );
   }
-  const firstFailure = status.failures[0];
+  const recentFailure =
+    status.failures.length > 0 ? status.failures[status.failures.length - 1] : undefined;
   return (
     <span className="text-xs text-rose-500">
-      ❌ BFF接続失敗
-      {firstFailure ? (
+      ❌ BFFに接続できません（自動再試行中）
+      {recentFailure ? (
         <>
           {" "}
-          • {firstFailure.url} ({firstFailure.detail})
+          • {recentFailure.url} ({recentFailure.detail})
         </>
       ) : null}
     </span>
@@ -666,23 +665,20 @@ const Bubble: React.FC<{
   themeClasses: ThemeClasses;
 }> = ({ role, text, card, themeClasses }) => (
   <div
-    className={[
-      "flex items-start gap-3",
-      role === "user" ? "flex-row-reverse text-right" : "flex-row",
-    ].join(" ")}
+    className={["flex items-start gap-3 flex-row justify-start"].join(" ")}
   >
     <ChatAvatar url={card?.avatar} label={card?.name ?? ""} role={role} />
     <div
       className={[
-        "max-w-[80%] rounded-2xl px-4 py-3 shadow-sm transition",
-        role === "user" ? themeClasses.bubbleUser : themeClasses.bubbleAi,
+        "max-w-[80%] rounded-2xl px-4 py-3 shadow-sm transition text-left",
+        role === "user" ? `mr-auto ${themeClasses.bubbleUser}` : themeClasses.bubbleAi,
       ].join(" ")}
     >
       <div className="mb-1 flex items-center gap-2 text-xs opacity-70">
         <span className="uppercase tracking-wide">{role === "user" ? "You" : card?.name ?? "Dr.Orb"}</span>
         {card && <CardChip name={card.name} themeClasses={themeClasses} />}
       </div>
-      <p className="whitespace-pre-wrap leading-relaxed">{text}</p>
+      <p className="whitespace-pre-wrap text-sm leading-relaxed">{text}</p>
     </div>
   </div>
 );
@@ -846,13 +842,16 @@ const App: React.FC = () => {
   const [adminError, setAdminError] = useState<string | null>(null);
   const [loadingAdminConfig, setLoadingAdminConfig] = useState(false);
   const [heartbeatDebug, setHeartbeatDebug] = useState<HeartbeatDebugInfo | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({ state: "pending" });
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({ state: "connecting", attempt: 0 });
   const [endpointChecks, setEndpointChecks] = useState<EndpointCheck[]>([]);
   const [healthChecksRunning, setHealthChecksRunning] = useState(false);
 
   const listRef = useRef<HTMLDivElement>(null);
   const hiddenFileInputRef = useRef<HTMLInputElement>(null);
   const adminNoticeTimerRef = useRef<number | null>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMountedRef = useRef(true);
+  const isConnectingRef = useRef(false);
 
   const recordHeartbeatResponse = useCallback(
     (base: string, info?: { endpoint: string; status: number; body: unknown }) => {
@@ -879,18 +878,62 @@ const App: React.FC = () => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
-  const refreshHealth = async () => {
-    setLoadingHealth(true);
-    setHealthError(undefined);
-    try {
-      const data = await apiFetch<HealthStatus>("/api/health");
-      setHealth(data);
-    } catch (err) {
-      setHealthError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoadingHealth(false);
-    }
-  };
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const fetchHealthStatus = useCallback(
+    async (base?: string): Promise<HealthStatus> => {
+      const url = await getHealthUrl(base);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 2000);
+      try {
+        const response = await fetch(url, { signal: controller.signal, cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const payload = (await response.json().catch(() => ({}))) as Partial<HealthStatus> & {
+          status?: string;
+          service?: string;
+          provider?: string;
+          cards?: number;
+          hostname?: string;
+        };
+        return {
+          status: typeof payload.status === "string" ? payload.status : "ok",
+          service: typeof payload.service === "string" ? payload.service : "mini-bff",
+          provider: typeof payload.provider === "string" ? payload.provider : providerConfig?.provider ?? "unknown",
+          cards: typeof payload.cards === "number" ? payload.cards : 0,
+          hostname: typeof payload.hostname === "string" ? payload.hostname : undefined,
+        };
+      } finally {
+        clearTimeout(timeout);
+      }
+    },
+    [providerConfig?.provider],
+  );
+
+  const refreshHealth = useCallback(
+    async (base?: string) => {
+      setLoadingHealth(true);
+      setHealthError(undefined);
+      try {
+        const data = await fetchHealthStatus(base);
+        setHealth(data);
+      } catch (err) {
+        setHealthError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setLoadingHealth(false);
+      }
+    },
+    [fetchHealthStatus],
+  );
 
   const enrichCard = (card: CardRecord, kind: CardRecord["kind"] = "api"): CardRecord => {
     const preset = FEATURED_CARDS.find((featured) => {
@@ -909,7 +952,7 @@ const App: React.FC = () => {
     };
   };
 
-  const refreshCards = async () => {
+  const refreshCards = useCallback(async () => {
     try {
       const data = await apiFetch<{ cards: CardRecord[] }>("/cards");
       if (Array.isArray(data.cards) && data.cards.length > 0) {
@@ -928,28 +971,43 @@ const App: React.FC = () => {
     } catch (err) {
       console.warn("failed to fetch cards", err);
     }
-  };
+  }, [selectedCard]);
 
-  const probeChatEndpoint = async (base: string) => {
-    const url = buildRequestUrl("/chat/v1", base);
-    const result = await fetchWithDebug(url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ prompt: HEALTHCHECK_PROMPT, cardId: "health-check", temperature: 0 }),
-    });
-    recordHeartbeatResponse(base, { endpoint: url, status: result.status, body: result.body });
-    if (!result.ok) {
-      throw new Error(`HTTP ${result.status} ${result.rawBody}`.trim());
-    }
-    const data = asJsonObject<{ reply?: string }>(result.body) ?? {};
-    const reply = typeof data.reply === "string" ? data.reply.trim() : "";
-    if (!reply) {
-      throw new Error("BFF応答エラー: 空の返信");
-    }
-    return { reply, data };
-  };
+  const probeHealth = useCallback(
+    async (base?: string) => {
+      try {
+        await fetchHealthStatus(base);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [fetchHealthStatus],
+  );
 
-  const performHealthChecks = async (base: string, reply: string): Promise<EndpointCheck[]> => {
+  const probeChatEndpoint = useCallback(
+    async (base: string) => {
+      const url = buildRequestUrl("/chat/v1", base);
+      const result = await fetchWithDebug(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt: HEALTHCHECK_PROMPT, cardId: "health-check", temperature: 0 }),
+      });
+      recordHeartbeatResponse(base, { endpoint: url, status: result.status, body: result.body });
+      if (!result.ok) {
+        throw new Error(`HTTP ${result.status} ${result.rawBody}`.trim());
+      }
+      const data = asJsonObject<{ reply?: string }>(result.body) ?? {};
+      const reply = typeof data.reply === "string" ? data.reply.trim() : "";
+      if (!reply) {
+        throw new Error("BFF応答エラー: 空の返信");
+      }
+      return { reply, data };
+    },
+    [recordHeartbeatResponse],
+  );
+
+  const performHealthChecks = useCallback(async (base: string, reply: string): Promise<EndpointCheck[]> => {
     const normalizedBase = normalizeBase(base);
     const checks: EndpointCheck[] = [
       {
@@ -1056,9 +1114,9 @@ const App: React.FC = () => {
     }
 
     return checks;
-  };
+  }, [recordHeartbeatResponse]);
 
-  const runHealthChecks = async (base: string, reply: string) => {
+  const runHealthChecks = useCallback(async (base: string, reply: string) => {
     setHealthChecksRunning(true);
     try {
       const checks = await performHealthChecks(base, reply);
@@ -1071,25 +1129,52 @@ const App: React.FC = () => {
     } finally {
       setHealthChecksRunning(false);
     }
-  };
+  }, [performHealthChecks]);
 
-  useEffect(() => {
-    let cancelled = false;
+  const startConnection = useCallback(async () => {
+    if (isConnectingRef.current || !isMountedRef.current) return;
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+    clearCachedHealthUrl();
+    isConnectingRef.current = true;
+    setEndpointChecks([]);
+    setHeartbeatDebug(null);
+    let totalAttempts = 0;
+    const failures: ConnectionFailure[] = [];
 
-    const bootstrap = async () => {
-      setConnectionStatus({ state: "pending" });
-      setEndpointChecks([]);
-      setHeartbeatDebug(null);
-      const failures: { url: string; detail: string }[] = [];
-
-      for (const candidate of bffCandidates) {
-        const base = normalizeBase(candidate);
+    for (const candidate of bffCandidates) {
+      const base = normalizeBase(candidate);
+      let lastError = "unknown error";
+      for (let attempt = 1; attempt <= MAX_CONNECTION_ATTEMPTS; attempt += 1) {
+        if (!isMountedRef.current) {
+          isConnectingRef.current = false;
+          return;
+        }
+        totalAttempts += 1;
+        setConnectionStatus({ state: "connecting", attempt: totalAttempts });
         try {
+          const healthOk = await probeHealth(base);
+          if (!healthOk) {
+            throw new Error("health check failed");
+          }
+
           const { reply } = await probeChatEndpoint(base);
-          if (cancelled) return;
+          if (!isMountedRef.current) {
+            isConnectingRef.current = false;
+            return;
+          }
           setResolvedBffBase(base);
           setConnectionStatus({ state: "ok", url: base, reply });
           recordHeartbeatResponse(base);
+          try {
+            const status = await fetchHealthStatus(base);
+            setHealth(status);
+            setHealthError(undefined);
+          } catch (error) {
+            setHealthError(error instanceof Error ? error.message : String(error));
+          }
           setMessages((prev) =>
             prev.length === 0
               ? [
@@ -1102,9 +1187,9 @@ const App: React.FC = () => {
                 ]
               : prev,
           );
-          await refreshHealth();
           await refreshCards();
           await runHealthChecks(base, reply);
+          isConnectingRef.current = false;
           return;
         } catch (error) {
           const detail = error instanceof Error ? error.message : String(error);
@@ -1113,39 +1198,55 @@ const App: React.FC = () => {
             url: base,
             error,
           });
-          failures.push({ url: base, detail });
+          lastError = detail;
+          if (attempt < MAX_CONNECTION_ATTEMPTS) {
+            await sleep(CONNECTION_RETRY_DELAY_MS);
+          }
         }
       }
+      failures.push({ url: base, detail: lastError });
+    }
 
-      if (!cancelled) {
-        setConnectionStatus({ state: "error", failures });
-        if (typeof window !== "undefined") {
-          const failedUrls = failures.map((failure) => failure.url).join(", ") || "未設定";
-          window.alert(`❌ BFFに接続できません（URL: ${failedUrls}）`);
-        }
-        console.error("CHAT_REQUEST_FAILED", { reason: "bootstrap_failed", failures });
-      }
-    };
+    if (isMountedRef.current) {
+      setConnectionStatus({ state: "error", attempt: totalAttempts, failures });
+      console.error("CHAT_REQUEST_FAILED", { reason: "bootstrap_failed", failures });
+    }
+    isConnectingRef.current = false;
+  }, [bffCandidates, fetchHealthStatus, probeChatEndpoint, probeHealth, recordHeartbeatResponse, refreshCards, runHealthChecks]);
 
-    bootstrap();
+  useEffect(() => {
+    startConnection();
+  }, [startConnection]);
 
+  useEffect(() => {
+    if (connectionStatus.state !== "error") {
+      return;
+    }
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+    }
+    retryTimerRef.current = setTimeout(() => {
+      if (!isMountedRef.current) return;
+      startConnection();
+    }, RECONNECT_DELAY_MS);
     return () => {
-      cancelled = true;
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
     };
-  }, [bffCandidates]);
+  }, [connectionStatus, startConnection]);
 
   const handleRetryHealthChecks = async () => {
     if (connectionStatus.state !== "ok") {
-      if (typeof window !== "undefined") {
-        window.alert("BFF未接続です。接続を確認してから再度お試しください。");
-      }
+      setAdminError("BFF未接続です。接続を確認してから再度お試しください。");
       console.error("CHAT_REQUEST_FAILED", { reason: "healthcheck_retry_without_connection" });
       return;
-    }
-    try {
-      await runHealthChecks(connectionStatus.url, connectionStatus.reply);
-      await refreshHealth();
-    } catch (error) {
+  }
+  try {
+    await runHealthChecks(connectionStatus.url, connectionStatus.reply);
+    await refreshHealth(connectionStatus.url);
+  } catch (error) {
       console.error("CHAT_REQUEST_FAILED", { reason: "healthcheck_retry_failed", error });
     }
   };
@@ -1498,6 +1599,21 @@ const App: React.FC = () => {
       </header>
 
       <main className="mx-auto flex max-w-5xl flex-col gap-6 px-5 py-6">
+        {connectionStatus.state === "connecting" && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-500/40 dark:bg-amber-900/20 dark:text-amber-200">
+            ⏳ BFFと接続中…（試行{Math.max(connectionStatus.attempt, 1)}回目）
+          </div>
+        )}
+        {connectionStatus.state === "error" && (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600 dark:border-rose-500/40 dark:bg-rose-900/20 dark:text-rose-200">
+            ❌ BFFに接続できません。自動再試行中です…
+            {connectionStatus.failures.length > 0 && (
+              <span className="mt-1 block text-xs opacity-80">
+                最終エラー: {connectionStatus.failures[connectionStatus.failures.length - 1]?.detail}
+              </span>
+            )}
+          </div>
+        )}
         {adminMode && showAdminPanel && (
           <>
             <AdminBillingPanel />

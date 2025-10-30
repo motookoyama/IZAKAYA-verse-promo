@@ -1,0 +1,20 @@
+{
+  "title": "IZAKAYA Lite",
+  "lang": "Language",
+  "nav.collection": "Character Collection",
+  "nav.adventure": "Multiplayer Adventure",
+  "collection.your": "Your Collection",
+  "collection.description": "Collect and prepare characters for your adventures",
+  "collection.select": "Select a character",
+  "collection.start": "Start Adventure",
+  "stats.players": "Online Players",
+  "stats.adventures": "Adventures",
+  "stats.characters": "Characters",
+  "chat.placeholder": "Type a message...",
+  "chat.send": "Send",
+  "chat.typing": "AI is thinking...",
+  "chat.input.label": "Message Input",
+  "chat.button": "Send",
+  "lang.japanese": "日本語",
+  "lang.english": "English"
+}
