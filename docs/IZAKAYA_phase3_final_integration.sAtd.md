@@ -14,7 +14,9 @@
 ## I. 概要（Purpose）
 
 本書は、**IZAKAYA verse のローカル構成を完全Docker化し、TX-ID Economy と Soul Logic を統合した最終構築フェーズの実行指示書**である。  
-以後、**Codex（構築AI）・Gemini（調査／デバッグAI）・Ollama（ローカル実行AI）** の3系統が同じ仕様で作業を引き継げるよう標準化する。
+以後、**Codex（構築AI）・Gemini（調査／デバッグAI）・Ollama（ローカル実行AI）** の3系統が同じ仕様で作業を引き継げるよう標準化する。  
+
+> ⚠️ 2025-10-29 追記: Docker compose による BFF 起動は廃止され、**BFF は常に `apps/bff/mini`（ポート 4117）を手動で起動する方針に切り替わりました。** 以下の Docker 手順は参考資料として残しますが、現行運用では BFF を compose に含めません。
 
 ---
 
@@ -64,8 +66,8 @@ Phase 4.0  ─── Soul Logic・Persona連携（次フェーズ）
 ```
 apps/
  ├── frontend/
- │    ├── lite-ui/          # 公開UI (Vite)
- │    └── preview-ui/       # テストUI
+ │    ├── preview-ui/       # 公開UI (Vite)
+ │    └── lite-ui-sample/   # 旧版サンプル
  └── bff/
       ├── mini/             # Mini BFF (TX-ID実装)
       └── Dockerfile
@@ -83,15 +85,15 @@ docker-compose.yml
 ```yaml
 version: "3.8"
 services:
-  lite-ui:
-    build: ./apps/frontend/lite-ui
+  preview-ui:
+    build: ./apps/frontend/preview-ui
     ports:
       - "5173:5173"
     environment:
       - NODE_ENV=development
       - VITE_API_URL=http://localhost:4000
     volumes:
-      - ./apps/frontend/lite-ui:/usr/src/app
+      - ./apps/frontend/preview-ui:/usr/src/app
     command: npm run dev
 
   bff:
@@ -167,7 +169,7 @@ app.listen(PORT, () => console.log(`Mini BFF running on port ${PORT}`));
 
 ```bash
 # 1. 依存インストール
-npm install --prefix apps/frontend/lite-ui
+npm install --prefix apps/frontend/preview-ui
 npm install --prefix apps/bff/mini
 
 # 2. Docker起動

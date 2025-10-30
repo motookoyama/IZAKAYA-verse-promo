@@ -1,0 +1,5 @@
+{
+  "name": "IZAKAYA Lite Preview",
+  "description": "A simplified chat UI with two AI personas, Dr. Orb and Miss Madi, featuring a mock wallet system and PayPal integration links. This application is designed for rapid prototyping and demonstration on the Google AI Studio platform, based on the IZAKAYA verse concept.",
+  "requestFramePermissions": []
+}

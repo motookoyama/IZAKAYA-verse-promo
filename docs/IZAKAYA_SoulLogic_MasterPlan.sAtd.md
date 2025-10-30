@@ -73,7 +73,7 @@ soul_logic:
 ## 🧪 実装～実証 (Phase 3–4)
 | 項目 | 内容 |
 | --- | --- |
-| Docker Compose | persona-engine + mini-bff + lite-ui |
+| Docker Compose | persona-engine + preview-ui (BFF はローカル手動起動) |
 | テストカード | Dr.Orb, Miss Madi |
 | 目的 | 感情変化・記憶保持・tone反応の再現性確認 |
 | ログ | `/docs/logs.md` (emotion_vector + reply_trace) |

@@ -28,24 +28,19 @@ interface ChatMessage {
 interface MultiplayerChatProps {
   roomId: string;
   currentPlayer: Player;
+  onSendChat: (prompt: string) => Promise<string>;
+  connectionReady: boolean;
+  initialBotMessage?: string;
 }
 
-export function MultiplayerChat({ roomId, currentPlayer }: MultiplayerChatProps) {
+export function MultiplayerChat({ roomId, currentPlayer, onSendChat, connectionReady, initialBotMessage }: MultiplayerChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
-      id: '1',
-      text: `Welcome to Adventure Room ${roomId}! The AI Game Master is ready to begin your quest.`,
+      id: 'system-intro',
+      text: `Welcome to Adventure Room ${roomId}! The AI Game Master is preparing your quest.`,
       senderId: 'system',
       senderName: 'System',
       senderType: 'system',
-      timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-    },
-    {
-      id: '2',
-      text: 'Greetings, adventurers! I sense great potential in this party. Your journey begins in the neon-lit streets of Neo-Tokyo 2099. What do you wish to do?',
-      senderId: 'ai-gm',
-      senderName: 'AI Game Master',
-      senderType: 'ai',
       timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -72,28 +67,46 @@ export function MultiplayerChat({ roomId, currentPlayer }: MultiplayerChatProps)
   
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const aiResponses = [
-    "Excellent choice! As you move forward, you notice strange energy readings on your scanner...",
-    "The AI overlord's minions have detected your presence. Roll for stealth!",
-    "A mysterious character emerges from the shadows, offering you a cryptic message...",
-    "Your character's special ability activates! The environment around you begins to shift...",
-    "Interesting strategy! The other players watch as you attempt this bold move...",
-    "The digital realm responds to your actions. Reality glitches for a moment...",
-    "A new quest objective appears: Investigate the anomalous signal in Sector 7."
-  ];
-
   useEffect(() => {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [messages]);
 
+  useEffect(() => {
+    if (!initialBotMessage) return;
+    setMessages((prev) => {
+      if (prev.some((message) => message.id === 'bootstrap')) {
+        return prev;
+      }
+      return [
+        ...prev,
+        {
+          id: 'bootstrap',
+          text: initialBotMessage,
+          senderId: 'ai-gm',
+          senderName: 'AI Game Master',
+          senderType: 'ai',
+          timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        },
+      ];
+    });
+  }, [initialBotMessage]);
+
   const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
+    const prompt = inputValue.trim();
+    if (!prompt || isTyping) return;
+    if (!connectionReady) {
+      if (typeof window !== 'undefined') {
+        window.alert('BFF未接続です。接続が完了してからメッセージを送信してください。');
+      }
+      console.error('CHAT_REQUEST_FAILED', { reason: 'send_without_connection' });
+      return;
+    }
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
-      text: inputValue,
+      text: prompt,
       senderId: currentPlayer.id,
       senderName: currentPlayer.name,
       senderType: 'player',
@@ -105,21 +118,35 @@ export function MultiplayerChat({ roomId, currentPlayer }: MultiplayerChatProps)
     setInputValue('');
     setIsTyping(true);
 
-    // Simulate AI GM response delay
-    setTimeout(() => {
-      const randomResponse = aiResponses[Math.floor(Math.random() * aiResponses.length)];
+    try {
+      const reply = await onSendChat(prompt);
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        text: randomResponse,
+        text: reply,
         senderId: 'ai-gm',
         senderName: 'AI Game Master',
         senderType: 'ai',
         timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
       };
-      
       setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('CHAT_REQUEST_FAILED', { reason: 'chat_send_failed', error });
+      if (typeof window !== 'undefined') {
+        window.alert(`チャットの送信に失敗しました: ${message}`);
+      }
+      const errorMessage: ChatMessage = {
+        id: (Date.now() + 2).toString(),
+        text: `エラー: ${message}`,
+        senderId: 'system',
+        senderName: 'System',
+        senderType: 'system',
+        timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500 + Math.random() * 2500);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -203,6 +230,13 @@ export function MultiplayerChat({ roomId, currentPlayer }: MultiplayerChatProps)
           <div>
             <h3 className="text-lg text-cyan-100">Adventure Room {roomId}</h3>
             <p className="text-sm text-slate-400">AI-Driven Multiplayer Adventure</p>
+            <p
+              className={`text-xs ${
+                connectionReady ? 'text-emerald-300' : 'text-amber-300'
+              }`}
+            >
+              {connectionReady ? '✅ BFF接続済み' : '⏳ BFF接続待ち'}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-slate-400" />

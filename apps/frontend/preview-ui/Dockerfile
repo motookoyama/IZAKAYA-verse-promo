@@ -1,7 +1,7 @@
 FROM node:20-slim AS builder
 WORKDIR /app
 ENV SWC_SKIP_VALIDATION=1
-ARG VITE_API_BASE_URL=http://localhost:4117
+ARG VITE_API_BASE_URL="http://localhost:4117"
 ENV VITE_API_BASE=$VITE_API_BASE_URL
 COPY package*.json ./
 RUN npm install --no-audit --progress=false

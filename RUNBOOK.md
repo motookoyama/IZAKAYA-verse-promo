@@ -4,10 +4,10 @@
 
 ## ディレクトリ概況（2025-10 整理）
 - フロントエンド: `apps/frontend/preview-ui`（現行 UI）／`apps/frontend/lite-ui-sample`（サンプルのみ）
-- Mini BFF: `apps/bff/mini`（Express。実装は別レポジトリからコピーして配置）
+- Mini BFF: `apps/bff/mini`（唯一の正規 BFF / PORT=4117 固定）
 - IPN サーバー: `apps/ipn`（必要時に追加）
 
-以降のスクリプトは必要に応じて新構成へ合わせて調整してください。
+> ⚠️ 2025-10-29 アップデート: BFF は `apps/bff/mini` のみを使用し、ポートは常に `http://localhost:4117`。Docker 版 BFF や旧 scripts によるポート切替は廃止しました。以下のレガシースクリプトを利用する場合は、BFF を別途 `npm run dev` で起動していることを前提に読み替えてください。
 
 ## よく使うコマンド
 - 起動: `scripts/start.sh`
@@ -52,6 +52,22 @@
 ## よくあるつまずき
 - 起動時に「ポート使用中」→ `scripts/stop.sh` → ダメなら `scripts/start-lite.sh`
 - 依存が足りないと表示される → 実行に問題なければ無視してOK。気になる場合は `AUTO_INSTALL=1 scripts/start.sh`
+
+## Dockerリセット（必須手順）
+Docker の旧コンテナが残っていると最新コードで動かなくなるため、**作業を再開するとき・バージョンを切り替えるときは必ずリセットを実施**してください。
+
+```bash
+chmod +x scripts/docker_reset.sh   # 初回のみ
+./scripts/docker_reset.sh
+```
+
+このラッパーは以下を自動で行います:
+- `docker compose down --remove-orphans`
+- `docker compose build --no-cache`
+- `docker compose up -d`
+- `docker compose ps` で状態確認
+
+> 旧コンテナの“幽霊”が残っていると、BFF や UI が古いまま応答し続ける原因になります。必ずこの手順を踏んでから作業してください。
 
 ## 環境変数（値は例）
 - `BFF_PORT`: 裏の番号（既定: `8787`）

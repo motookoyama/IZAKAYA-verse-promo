@@ -1,20 +1,20 @@
-# Mini BFF (Express/CommonJS)
+# Mini BFF（正規バックエンド）
 
-- ここには IZAKAYA Lite 向けの Mini BFF (Express) を配置します。
-- 元レポジトリ: `IZAKAYA verse/izakaya_lite/mini-bff-express`。
-- `apps/bff/mini` 配下に `package.json`, `src/`, `tsconfig.json` などをコピーしてください。
-- 起動コマンド例:
-  ```bash
-  npm install
-  npm run dev    # ts-node-dev / nodemon 推奨
-  npm run build  # tsc -p tsconfig.json
-  npm start      # node dist/index.js
-  ```
-- Render や Docker で利用する際は `.env.example` に以下を含めてください。
-  ```
-  PROVIDER=mock|openai|gemini
-  PORT=4117
-  DATA_DIR=./data
-  PAYPAL_TX_ENDPOINT=https://ipnpb.sandbox.paypal.com/cgi-bin/webscr
-  ```
-- ウォレットやチャットの API 契約は `docs/` 直下の仕様書を参照。
+このリポジトリで使用する BFF は **`apps/bff/mini` ただ一つ** です。外部リポジトリからのコピーや複数バージョンの共存は禁止とします。
+
+## 起動コマンド
+
+```bash
+cd apps/bff/mini
+npm install
+npm run dev   # 固定ポート: http://localhost:4117
+```
+
+## 必須事項
+
+- `.env`（同ディレクトリ）で `PROVIDER` / 各 API キー / モデル名を設定します。
+- Docker 版 BFF は廃止済みです。compose 経由で mini-bff を起動しないでください。
+- すべてのフロントエンドは `http://localhost:4117` を経由します。
+- ここで定義されていない BFF コード・テンプレートを新規に作成しないでください。
+
+ウォレットやチャット API の仕様は `docs/` 配下の設計書を参照してください。

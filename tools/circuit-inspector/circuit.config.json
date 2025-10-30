@@ -1,0 +1,28 @@
+{
+  "services": [
+    {
+      "id": "bff-mini",
+      "name": "Mini BFF (apps/bff/mini)",
+      "root": "apps/bff/mini",
+      "entry": "server.js",
+      "envFile": ".env",
+      "requiredEnv": {
+        "anyOf": [
+          ["PROVIDER", "GEMINI_MODEL", "GEMINI_API_KEY"],
+          ["PROVIDER", "OPENAI_MODEL", "OPENAI_API_KEY"],
+          ["PROVIDER", "OLLAMA_MODEL", "OLLAMA_HOST"]
+        ]
+      },
+      "sourceChecks": {
+        "requireDotenvAtTop": true,
+        "dotenvMarkers": [
+          "import dotenv from \"dotenv\"",
+          "require(\"dotenv\").config",
+          "import \"dotenv/config\"",
+          "dotenv.config()"
+        ],
+        "expectedPortLiteral": "4117"
+      }
+    }
+  ]
+}

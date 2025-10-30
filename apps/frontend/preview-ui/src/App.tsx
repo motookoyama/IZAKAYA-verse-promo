@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import AdminBillingPanel from "./components/AdminBillingPanel";
 import drOrbAvatar from "./assets/dr-orb.png";
 import missMadiAvatar from "./assets/miss-madi.png";
 
@@ -19,6 +20,23 @@ type Message = {
   cardName?: string;
 };
 
+type ProviderConfig = {
+  provider: string;
+  model?: string;
+  endpoint?: string;
+  hasApiKey?: boolean;
+  updatedAt?: string;
+  source?: string;
+};
+
+type ProviderOption = { label: string; value: string };
+
+type PasswordForm = {
+  current: string;
+  next: string;
+  confirm: string;
+};
+
 type HealthStatus = {
   status: string;
   service: string;
@@ -27,7 +45,51 @@ type HealthStatus = {
   hostname?: string;
 };
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "";
+type ConnectionStatus =
+  | { state: "pending" }
+  | { state: "ok"; url: string; reply: string }
+  | { state: "error"; failures: { url: string; detail: string }[] };
+
+type EndpointCheck = {
+  endpoint: string;
+  url: string;
+  ok: boolean;
+  detail?: string;
+};
+
+type HeartbeatDebugInfo = {
+  endpoint: string;
+  lastResponse?: {
+    endpoint: string;
+    status: number;
+    body: unknown;
+  };
+};
+
+function resolveInitialBffBase(): string {
+  const raw =
+    (import.meta.env.VITE_REACT_APP_BFF_URL as string | undefined) ||
+    (import.meta.env.VITE_BFF_URL as string | undefined) ||
+    (import.meta.env.REACT_APP_BFF_URL as string | undefined);
+  const fallback = "http://localhost:4117";
+  const selected = typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : fallback;
+  return selected.replace(/\/+$/, "");
+}
+
+const normalizeBase = (value: string) => value.replace(/\/+$/, "");
+
+const BFF_BASE_URL = resolveInitialBffBase();
+const BFF_CANDIDATES = [BFF_BASE_URL];
+
+let resolvedBffBase = normalizeBase(BFF_BASE_URL);
+
+const getResolvedBffBase = () => resolvedBffBase;
+const setResolvedBffBase = (value: string) => {
+  resolvedBffBase = normalizeBase(value);
+};
+
+const HEALTHCHECK_UID = "IZK_HEALTHCHECK_UI";
+const HEALTHCHECK_PROMPT = "[health-check] BFF connectivity verification";
 
 const PAYPAL_PLANS = [
   {
@@ -83,17 +145,18 @@ const FEATURED_CARDS: CardRecord[] = [
   { id: "placeholder", name: "V2Card.PNG", kind: "placeholder" },
 ];
 
-const MOCK_MESSAGES: Message[] = [
-  {
-    role: "ai",
-    text: "ようこそ。ここは IZAKAYA verse のプレビュー。カードを選ぶか、画像(PNG 400x600)をドロップして反映してください。",
-    cardId: "miss-madi",
-    cardName: "Miss Madi",
-  },
-];
+function buildRequestUrl(path: string, baseOverride?: string): string {
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const base = baseOverride ? normalizeBase(baseOverride) : getResolvedBffBase();
+  return `${base}${normalizedPath}`;
+}
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = buildRequestUrl(path);
+  const res = await fetch(url, {
     headers: { "content-type": "application/json" },
     ...init,
   });
@@ -102,6 +165,47 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(`${res.status} ${text}`);
   }
   return res.json();
+}
+
+type DebugFetchResult = {
+  status: number;
+  ok: boolean;
+  body: unknown;
+  rawBody: string;
+};
+
+async function fetchWithDebug(url: string, init: RequestInit): Promise<DebugFetchResult> {
+  const response = await fetch(url, init);
+  const status = response.status;
+  let rawBody = "";
+  try {
+    rawBody = await response.text();
+  } catch {
+    rawBody = "";
+  }
+  let body: unknown = rawBody;
+  if (rawBody) {
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      // leave as text
+    }
+  } else {
+    body = {};
+  }
+  return {
+    status,
+    ok: response.ok,
+    body,
+    rawBody,
+  };
+}
+
+function asJsonObject<T = Record<string, any>>(value: unknown): T | null {
+  if (value && typeof value === "object") {
+    return value as T;
+  }
+  return null;
 }
 
 function slugify(input: string) {
@@ -175,28 +279,65 @@ const THEME_MAP: Record<Theme, ThemeClasses> = {
   },
 };
 
-const cannedMessages = [
-  "了解。カードの気配を解析中…",
-  "舞台を用意しました。次の合図を。",
-  "Dr.Orb: プロトコル起動。あなたのカードを反映しました。",
+const PROVIDER_OPTIONS: ProviderOption[] = [
+  { label: "Gemini", value: "GEMINI" },
+  { label: "OpenAI", value: "OPENAI" },
+  { label: "Ollama", value: "OLLAMA" },
+  { label: "Custom Provider", value: "CUSTOM" },
 ];
 
+const ADMIN_STORAGE_KEY = "IZK_ADMIN_MODE";
 const HealthBadge: React.FC<{ health?: HealthStatus; loading: boolean; error?: string }> = ({
   health,
   loading,
   error,
 }) => {
   if (loading) return <span className="text-xs text-zinc-400">checking…</span>;
-  if (error)
-    return (
-      <span className="text-xs text-rose-500">
-        offline <span className="text-zinc-500">({error})</span>
-      </span>
-    );
+  if (error) {
+    return <span className="text-xs text-rose-500">offline</span>;
+  }
   if (!health) return null;
   return (
     <span className={`text-xs ${STATUS_COLOR[health.status] ?? "text-emerald-500"}`}>
       {health.status} <span className="text-zinc-500">• {health.provider}</span>
+    </span>
+  );
+};
+
+const ConnectionStatusPill: React.FC<{ status: ConnectionStatus }> = ({ status }) => {
+  if (status.state === "pending") {
+    return <span className="text-xs text-zinc-400">BFF接続チェック中…</span>;
+  }
+  if (status.state === "ok") {
+    return (
+      <span className="text-xs text-emerald-500">
+        ✅ BFF接続成功 • <span className="text-emerald-600">{status.url}</span>
+      </span>
+    );
+  }
+  const firstFailure = status.failures[0];
+  return (
+    <span className="text-xs text-rose-500">
+      ❌ BFF接続失敗
+      {firstFailure ? (
+        <>
+          {" "}
+          • {firstFailure.url} ({firstFailure.detail})
+        </>
+      ) : null}
+    </span>
+  );
+};
+
+const HealthCheckIndicator: React.FC<{ checks: EndpointCheck[] }> = ({ checks }) => {
+  if (checks.length === 0) return null;
+  const failures = checks.filter((check) => !check.ok);
+  if (failures.length === 0) {
+    return <span className="text-xs text-emerald-500">✅ ヘルスチェック全通過</span>;
+  }
+  return (
+    <span className="text-xs text-rose-500">
+      ⚠️ ヘルス異常: {failures.map((item) => item.endpoint).join(", ")}
     </span>
   );
 };
@@ -240,6 +381,283 @@ const CardChip: React.FC<{ name: string; selected?: boolean; themeClasses: Theme
     {name}
   </span>
 );
+
+type AdminPanelProps = {
+  providerOptions: ProviderOption[];
+  providerForm: { provider: string; model: string };
+  onProviderChange: (field: "provider" | "model", value: string) => void;
+  onSaveProvider: () => void;
+  apiKeyInput: string;
+  onApiKeyChange: (value: string) => void;
+  onSaveApiKey: () => void;
+  onClearApiKey: () => void;
+  notice: string | null;
+  error: string | null;
+  loading: boolean;
+  passwordForm: PasswordForm;
+  onPasswordChange: (field: keyof PasswordForm, value: string) => void;
+  onSavePassword: () => void;
+  providerConfig: ProviderConfig | null;
+  healthChecks: EndpointCheck[];
+  onRetryHealthChecks: () => void;
+  healthChecksRunning: boolean;
+  heartbeatDebug: HeartbeatDebugInfo | null;
+};
+
+const AdminPanel: React.FC<AdminPanelProps> = ({
+  providerOptions,
+  providerForm,
+  onProviderChange,
+  onSaveProvider,
+  apiKeyInput,
+  onApiKeyChange,
+  onSaveApiKey,
+  onClearApiKey,
+  notice,
+  error,
+  loading,
+  passwordForm,
+  onPasswordChange,
+  onSavePassword,
+  providerConfig,
+  healthChecks,
+  onRetryHealthChecks,
+  healthChecksRunning,
+  heartbeatDebug,
+}) => {
+  const passwordMismatch = passwordForm.next !== passwordForm.confirm;
+  const passwordTooShort =
+    passwordForm.next.trim().length > 0 && passwordForm.next.trim().length < 6;
+  const passwordDisabled =
+    loading ||
+    !passwordForm.current.trim() ||
+    !passwordForm.next.trim() ||
+    passwordMismatch ||
+    passwordTooShort;
+  const hasHealthFailures = healthChecks.some((check) => !check.ok);
+
+  return (
+    <section
+      id="admin"
+      className="rounded-3xl border border-zinc-200/60 bg-white px-6 py-6 shadow-lg dark:border-zinc-700/50 dark:bg-[#111118]"
+    >
+      <div className="mb-5 flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-zinc-800 dark:text-zinc-100">管理タブ</h2>
+        {providerConfig?.updatedAt && (
+          <span className="text-xs text-zinc-500">
+            最終更新: {new Date(providerConfig.updatedAt).toLocaleString()}
+          </span>
+        )}
+      </div>
+      {error && (
+        <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-600 dark:border-rose-500/40 dark:bg-rose-900/30 dark:text-rose-200">
+          {error}
+        </div>
+      )}
+      {notice && (
+        <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-600 dark:border-emerald-500/40 dark:bg-emerald-900/30 dark:text-emerald-200">
+          {notice}
+        </div>
+      )}
+      {healthChecks.length > 0 && (
+        <div
+          className={[
+            "mb-4 rounded-lg px-4 py-3 text-sm",
+            hasHealthFailures
+              ? "border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-500/40 dark:bg-rose-900/30 dark:text-rose-200"
+              : "border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-500/40 dark:bg-emerald-900/20 dark:text-emerald-200",
+          ].join(" ")}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="font-medium">BFFヘルスチェック</div>
+            <button
+              onClick={onRetryHealthChecks}
+              type="button"
+              disabled={healthChecksRunning}
+              className="rounded-md border border-current px-2 py-1 text-xs font-semibold hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {healthChecksRunning ? "検証中…" : "再検証"}
+            </button>
+          </div>
+          <ul className="mt-2 space-y-1">
+            {healthChecks.map((check) => (
+              <li key={check.endpoint} className="flex flex-col text-xs leading-relaxed">
+                <span className="font-semibold">
+                  {check.ok ? "✅" : "❌"} {check.endpoint}
+                </span>
+                <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                  {check.url}
+                  {!check.ok && check.detail ? ` — ${check.detail}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {heartbeatDebug && (
+        <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:border-slate-600/60 dark:bg-slate-900/40 dark:text-slate-200">
+          <div className="font-medium">HeartBeat Debug (Admin only)</div>
+          <div className="mt-2 space-y-2 text-xs">
+            <div className="break-all"><span className="font-semibold">BFF Endpoint:</span> {heartbeatDebug.endpoint}</div>
+            {heartbeatDebug.lastResponse ? (
+              <div className="space-y-1">
+                <div className="font-semibold">Last Response</div>
+                <div className="break-all text-[11px] text-slate-500 dark:text-slate-400">
+                  {heartbeatDebug.lastResponse.endpoint}
+                </div>
+                <div>status: {heartbeatDebug.lastResponse.status}</div>
+                <details className="rounded bg-black/5 p-2 dark:bg-white/10">
+                  <summary className="cursor-pointer text-[11px] font-semibold">show body</summary>
+                  <pre className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap break-words text-[11px] font-mono">
+{JSON.stringify(heartbeatDebug.lastResponse.body, null, 2)}
+                  </pre>
+                </details>
+              </div>
+            ) : (
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">レスポンス情報はまだ取得されていません。</div>
+            )}
+          </div>
+        </div>
+      )}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSaveProvider();
+          }}
+        className="rounded-2xl border border-zinc-200/60 bg-white p-5 shadow-sm dark:border-zinc-700/40 dark:bg-[#0f0f19]"
+      >
+        <h3 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-100">プロバイダ設定</h3>
+        <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-zinc-500">
+          プロバイダ
+        </label>
+        <select
+          value={providerForm.provider}
+          onChange={(event) => onProviderChange("provider", event.target.value)}
+          className="mb-4 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-200 dark:border-zinc-700 dark:bg-[#141425] dark:text-zinc-100 dark:focus:border-purple-500 dark:focus:ring-purple-500/40"
+        >
+          {providerOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+
+        <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-zinc-500">
+          モデル名
+        </label>
+        <input
+          type="text"
+          value={providerForm.model}
+          onChange={(event) => onProviderChange("model", event.target.value)}
+          placeholder="例: gemini-pro / gpt-4o-mini / llama3"
+          className="mb-4 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-200 dark:border-zinc-700 dark:bg-[#141425] dark:text-zinc-100 dark:focus:border-purple-500 dark:focus:ring-purple-500/40"
+        />
+        <button
+          type="submit"
+          disabled={loading}
+          className="inline-flex items-center justify-center rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-rose-600 disabled:opacity-60 dark:bg-purple-600 dark:hover:bg-purple-500"
+        >
+          {loading ? "保存中…" : "保存"}
+        </button>
+      </form>
+
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSaveApiKey();
+        }}
+        className="rounded-2xl border border-zinc-200/60 bg-white p-5 shadow-sm dark:border-zinc-700/40 dark:bg-[#0f0f19]"
+      >
+        <h3 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-100">APIキー設定</h3>
+        <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-zinc-500">
+          APIキー
+        </label>
+        <input
+          type="password"
+          value={apiKeyInput}
+          onChange={(event) => onApiKeyChange(event.target.value)}
+          placeholder={providerConfig?.hasApiKey ? "******** （上書きする場合のみ入力）" : "APIキーを入力"}
+          className="mb-4 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-200 dark:border-zinc-700 dark:bg-[#141425] dark:text-zinc-100 dark:focus:border-purple-500 dark:focus:ring-purple-500/40"
+        />
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="submit"
+            disabled={loading}
+            className="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-600 disabled:opacity-60 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+          >
+            {loading ? "保存中…" : "APIキーを保存"}
+          </button>
+          <button
+            type="button"
+            onClick={onClearApiKey}
+            disabled={loading}
+            className="inline-flex items-center justify-center rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-600 hover:border-rose-300 hover:text-rose-500 disabled:opacity-60 dark:border-zinc-600 dark:text-zinc-200 dark:hover:border-rose-400 dark:hover:text-rose-300"
+          >
+            キーを削除
+          </button>
+          {providerConfig?.hasApiKey && (
+            <span className="text-xs text-emerald-600 dark:text-emerald-400">保存済みのキーあり</span>
+          )}
+        </div>
+      </form>
+      </div>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSavePassword();
+        }}
+        className="mt-6 rounded-2xl border border-zinc-200/60 bg-white p-5 shadow-sm dark:border-zinc-700/40 dark:bg-[#0f0f19]"
+      >
+        <h3 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-100">パスワード変更</h3>
+        <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-zinc-500">
+          現在のパスワード
+        </label>
+        <input
+          type="password"
+          value={passwordForm.current}
+          onChange={(event) => onPasswordChange("current", event.target.value)}
+          className="mb-4 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-200 dark:border-zinc-700 dark:bg-[#141425] dark:text-zinc-100 dark:focus:border-purple-500 dark:focus:ring-purple-500/40"
+        />
+        <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-zinc-500">
+          新しいパスワード
+        </label>
+        <input
+          type="password"
+          value={passwordForm.next}
+          onChange={(event) => onPasswordChange("next", event.target.value)}
+          className="mb-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-200 dark:border-zinc-700 dark:bg-[#141425] dark:text-zinc-100 dark:focus:border-purple-500 dark:focus:ring-purple-500/40"
+        />
+        <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-zinc-500">
+          新しいパスワード（確認）
+        </label>
+        <input
+          type="password"
+          value={passwordForm.confirm}
+          onChange={(event) => onPasswordChange("confirm", event.target.value)}
+          className="mb-3 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-200 dark:border-zinc-700 dark:bg-[#141425] dark:text-zinc-100 dark:focus:border-purple-500 dark:focus:ring-purple-500/40"
+        />
+        <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">※ 6文字以上のパスワードを推奨します。</p>
+        {passwordMismatch && (
+          <p className="mb-3 text-xs text-rose-600 dark:text-rose-300">新しいパスワードが一致していません。</p>
+        )}
+        {passwordTooShort && (
+          <p className="mb-3 text-xs text-rose-600 dark:text-rose-300">新しいパスワードは6文字以上にしてください。</p>
+        )}
+        <button
+          type="submit"
+          disabled={passwordDisabled}
+          className="inline-flex items-center justify-center rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-600 disabled:opacity-60 dark:bg-indigo-600 dark:hover:bg-indigo-500"
+        >
+          {loading ? "保存中…" : "変更を保存"}
+        </button>
+      </form>
+      <div className="mt-6 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-3 text-xs text-zinc-600 dark:border-zinc-600 dark:bg-[#141425] dark:text-zinc-300">
+        設定は <code className="font-mono">apps/bff/mini/.env</code> に保存され、UI から変更すると即時反映されます。
+      </div>
+    </section>
+  );
+};
 
 const Bubble: React.FC<{
   role: Role;
@@ -399,35 +817,73 @@ const PayPalGrid: React.FC = () => (
 
 const App: React.FC = () => {
   const [theme, setTheme] = useState<Theme>("light");
+  const bffCandidates = useMemo(() => BFF_CANDIDATES, []);
   const themeClasses = useMemo(() => THEME_MAP[theme], [theme]);
 
   const [cards, setCards] = useState<CardRecord[]>(FEATURED_CARDS);
   const [selectedCard, setSelectedCard] = useState<string>(FEATURED_CARDS[0]?.id ?? "");
-  const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [temperature, setTemperature] = useState("0.7");
   const [health, setHealth] = useState<HealthStatus>();
   const [loadingHealth, setLoadingHealth] = useState(false);
   const [healthError, setHealthError] = useState<string>();
   const [sending, setSending] = useState(false);
+  const [adminMode, setAdminMode] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(ADMIN_STORAGE_KEY) === "true";
+  });
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [providerConfig, setProviderConfig] = useState<ProviderConfig | null>(null);
+  const [providerForm, setProviderForm] = useState({ provider: "GEMINI", model: "" });
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [passwordForm, setPasswordForm] = useState<PasswordForm>({
+    current: "",
+    next: "",
+    confirm: "",
+  });
+  const [adminNotice, setAdminNotice] = useState<string | null>(null);
+  const [adminError, setAdminError] = useState<string | null>(null);
+  const [loadingAdminConfig, setLoadingAdminConfig] = useState(false);
+  const [heartbeatDebug, setHeartbeatDebug] = useState<HeartbeatDebugInfo | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({ state: "pending" });
+  const [endpointChecks, setEndpointChecks] = useState<EndpointCheck[]>([]);
+  const [healthChecksRunning, setHealthChecksRunning] = useState(false);
 
   const listRef = useRef<HTMLDivElement>(null);
   const hiddenFileInputRef = useRef<HTMLInputElement>(null);
+  const adminNoticeTimerRef = useRef<number | null>(null);
+
+  const recordHeartbeatResponse = useCallback(
+    (base: string, info?: { endpoint: string; status: number; body: unknown }) => {
+      setHeartbeatDebug((prev) => ({
+        endpoint: base,
+        lastResponse: info ?? prev?.lastResponse,
+      }));
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const storedTheme = localStorage.getItem("IZAKAYA_THEME");
+    if (storedTheme === "dark" || storedTheme === "light") {
+      setTheme(storedTheme);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("IZAKAYA_THEME", theme);
+  }, [theme]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
-  useEffect(() => {
-    refreshHealth();
-    refreshCards();
-  }, []);
-
   const refreshHealth = async () => {
     setLoadingHealth(true);
     setHealthError(undefined);
     try {
-      const data = await apiFetch<HealthStatus>("/health");
+      const data = await apiFetch<HealthStatus>("/api/health");
       setHealth(data);
     } catch (err) {
       setHealthError(err instanceof Error ? err.message : String(err));
@@ -474,11 +930,267 @@ const App: React.FC = () => {
     }
   };
 
+  const probeChatEndpoint = async (base: string) => {
+    const url = buildRequestUrl("/chat/v1", base);
+    const result = await fetchWithDebug(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ prompt: HEALTHCHECK_PROMPT, cardId: "health-check", temperature: 0 }),
+    });
+    recordHeartbeatResponse(base, { endpoint: url, status: result.status, body: result.body });
+    if (!result.ok) {
+      throw new Error(`HTTP ${result.status} ${result.rawBody}`.trim());
+    }
+    const data = asJsonObject<{ reply?: string }>(result.body) ?? {};
+    const reply = typeof data.reply === "string" ? data.reply.trim() : "";
+    if (!reply) {
+      throw new Error("BFF応答エラー: 空の返信");
+    }
+    return { reply, data };
+  };
+
+  const performHealthChecks = async (base: string, reply: string): Promise<EndpointCheck[]> => {
+    const normalizedBase = normalizeBase(base);
+    const checks: EndpointCheck[] = [
+      {
+        endpoint: "/chat/v1",
+        url: buildRequestUrl("/chat/v1", normalizedBase),
+        ok: true,
+        detail: `reply length: ${reply.length}`,
+      },
+    ];
+
+    const headers = {
+      "content-type": "application/json",
+      "X-IZK-UID": HEALTHCHECK_UID,
+    };
+
+    const balanceUrl = buildRequestUrl("/wallet/balance", normalizedBase);
+    try {
+      const res = await fetchWithDebug(balanceUrl, { headers });
+      recordHeartbeatResponse(base, { endpoint: balanceUrl, status: res.status, body: res.body });
+      if (!res.ok) {
+        checks.push({
+          endpoint: "/wallet/balance",
+          url: balanceUrl,
+          ok: false,
+          detail: `HTTP ${res.status} ${res.rawBody}`.trim(),
+        });
+      } else {
+        const payload = asJsonObject<{ balance?: number }>(res.body) ?? {};
+        const balanceDetail =
+          typeof payload.balance === "number" ? `balance=${payload.balance}` : undefined;
+        checks.push({ endpoint: "/wallet/balance", url: balanceUrl, ok: true, detail: balanceDetail });
+      }
+    } catch (error) {
+      checks.push({
+        endpoint: "/wallet/balance",
+        url: balanceUrl,
+        ok: false,
+        detail: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    const redeemUrl = buildRequestUrl("/wallet/redeem", normalizedBase);
+    const consumeUrl = buildRequestUrl("/wallet/consume", normalizedBase);
+    const now = new Date();
+    const ymd = now.toISOString().slice(0, 10).replace(/-/g, "");
+    const token = Math.random().toString(36).slice(2, 8).toUpperCase();
+    const txId = `TX-${ymd}-${token}`;
+    let redeemSucceeded = false;
+    let redeemDetail: string | undefined;
+
+    try {
+      const redeemRes = await fetchWithDebug(redeemUrl, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ amount_pt: 1, tx_id: txId }),
+      });
+      recordHeartbeatResponse(base, { endpoint: redeemUrl, status: redeemRes.status, body: redeemRes.body });
+      if (!redeemRes.ok) {
+        redeemDetail = `HTTP ${redeemRes.status} ${redeemRes.rawBody}`.trim();
+      } else {
+        redeemSucceeded = true;
+      }
+    } catch (error) {
+      redeemDetail = error instanceof Error ? error.message : String(error);
+    }
+
+    if (redeemSucceeded) {
+      const idempotencyKey = `health-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+      try {
+        const consumeRes = await fetchWithDebug(consumeUrl, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ amount_pt: 1, sku: "health-check", idempotency_key: idempotencyKey }),
+        });
+        recordHeartbeatResponse(base, { endpoint: consumeUrl, status: consumeRes.status, body: consumeRes.body });
+        if (!consumeRes.ok) {
+          checks.push({
+            endpoint: "/wallet/consume",
+            url: consumeUrl,
+            ok: false,
+            detail: `HTTP ${consumeRes.status} ${consumeRes.rawBody}`.trim(),
+          });
+        } else {
+          const payload = asJsonObject<{ balance?: number }>(consumeRes.body) ?? {};
+          const detail =
+            typeof payload.balance === "number" ? `balance=${payload.balance}` : "ok";
+          checks.push({ endpoint: "/wallet/consume", url: consumeUrl, ok: true, detail });
+        }
+      } catch (error) {
+        checks.push({
+          endpoint: "/wallet/consume",
+          url: consumeUrl,
+          ok: false,
+          detail: error instanceof Error ? error.message : String(error),
+        });
+      }
+    } else {
+      checks.push({
+        endpoint: "/wallet/consume",
+        url: consumeUrl,
+        ok: false,
+        detail: redeemDetail ? `redeem failed: ${redeemDetail}` : "redeem failed",
+      });
+    }
+
+    return checks;
+  };
+
+  const runHealthChecks = async (base: string, reply: string) => {
+    setHealthChecksRunning(true);
+    try {
+      const checks = await performHealthChecks(base, reply);
+      setEndpointChecks(checks);
+      const failures = checks.filter((check) => !check.ok);
+      if (failures.length > 0) {
+        console.error("CHAT_REQUEST_FAILED", { reason: "healthcheck_failed", failures });
+      }
+      return checks;
+    } finally {
+      setHealthChecksRunning(false);
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const bootstrap = async () => {
+      setConnectionStatus({ state: "pending" });
+      setEndpointChecks([]);
+      setHeartbeatDebug(null);
+      const failures: { url: string; detail: string }[] = [];
+
+      for (const candidate of bffCandidates) {
+        const base = normalizeBase(candidate);
+        try {
+          const { reply } = await probeChatEndpoint(base);
+          if (cancelled) return;
+          setResolvedBffBase(base);
+          setConnectionStatus({ state: "ok", url: base, reply });
+          recordHeartbeatResponse(base);
+          setMessages((prev) =>
+            prev.length === 0
+              ? [
+                  {
+                    role: "ai",
+                    text: reply,
+                    cardId: FEATURED_CARDS[0]?.id,
+                    cardName: "BFFヘルスチェック",
+                  },
+                ]
+              : prev,
+          );
+          await refreshHealth();
+          await refreshCards();
+          await runHealthChecks(base, reply);
+          return;
+        } catch (error) {
+          const detail = error instanceof Error ? error.message : String(error);
+          console.error("CHAT_REQUEST_FAILED", {
+            reason: "bootstrap_candidate_failed",
+            url: base,
+            error,
+          });
+          failures.push({ url: base, detail });
+        }
+      }
+
+      if (!cancelled) {
+        setConnectionStatus({ state: "error", failures });
+        if (typeof window !== "undefined") {
+          const failedUrls = failures.map((failure) => failure.url).join(", ") || "未設定";
+          window.alert(`❌ BFFに接続できません（URL: ${failedUrls}）`);
+        }
+        console.error("CHAT_REQUEST_FAILED", { reason: "bootstrap_failed", failures });
+      }
+    };
+
+    bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bffCandidates]);
+
+  const handleRetryHealthChecks = async () => {
+    if (connectionStatus.state !== "ok") {
+      if (typeof window !== "undefined") {
+        window.alert("BFF未接続です。接続を確認してから再度お試しください。");
+      }
+      console.error("CHAT_REQUEST_FAILED", { reason: "healthcheck_retry_without_connection" });
+      return;
+    }
+    try {
+      await runHealthChecks(connectionStatus.url, connectionStatus.reply);
+      await refreshHealth();
+    } catch (error) {
+      console.error("CHAT_REQUEST_FAILED", { reason: "healthcheck_retry_failed", error });
+    }
+  };
+
+  const showAdminToast = useCallback((message: string) => {
+    setAdminError(null);
+    setAdminNotice(message);
+    if (adminNoticeTimerRef.current) {
+      window.clearTimeout(adminNoticeTimerRef.current);
+    }
+    adminNoticeTimerRef.current = window.setTimeout(() => {
+      setAdminNotice(null);
+      adminNoticeTimerRef.current = null;
+    }, 4000);
+  }, []);
+
+  const fetchProviderConfig = useCallback(async () => {
+    try {
+      setLoadingAdminConfig(true);
+      const data = await apiFetch<ProviderConfig>("/admin/provider");
+      setProviderConfig(data);
+      setProviderForm({
+        provider: (data.provider ?? "GEMINI").toUpperCase(),
+        model: data.model ?? "",
+      });
+      setAdminError(null);
+    } catch (error) {
+      setAdminError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setLoadingAdminConfig(false);
+    }
+  }, []);
+
   const addMessage = (message: Message) => setMessages((prev) => [...prev, message]);
 
   const handleSend = async () => {
     const content = input.trim();
     if (!content || sending) return;
+    if (connectionStatus.state !== "ok") {
+      if (typeof window !== "undefined") {
+        window.alert("BFF未接続です。接続確認後に再度お試しください。");
+      }
+      console.error("CHAT_REQUEST_FAILED", { reason: "send_without_connection" });
+      return;
+    }
     const tempValue = Math.min(1, Math.max(0, Number(temperature) || 0.7));
     const selectedCardMeta = cards.find((card) => card.id === selectedCard);
     setInput("");
@@ -490,19 +1202,28 @@ const App: React.FC = () => {
         method: "POST",
         body: JSON.stringify(body),
       });
+      const replyText = typeof data.reply === "string" ? data.reply.trim() : "";
+      if (!replyText) {
+        throw new Error("BFF応答エラー: 空の返信");
+      }
       addMessage({
         role: "ai",
-        text: data.reply || "（応答なし）",
+        text: replyText,
         cardId: selectedCard,
         cardName: selectedCardMeta?.name,
       });
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("CHAT_REQUEST_FAILED", { reason: "send_failed", error: err });
       addMessage({
         role: "ai",
-        text: `エラー: ${(err as Error)?.message ?? String(err)}\nモック応答: ${cannedMessages[Math.floor(Math.random() * cannedMessages.length)]}`,
+        text: `エラー: ${message}`,
         cardId: selectedCard,
         cardName: selectedCardMeta?.name,
       });
+      if (typeof window !== "undefined") {
+        window.alert(`チャットの送信に失敗しました: ${message}`);
+      }
     } finally {
       setSending(false);
     }
@@ -546,6 +1267,198 @@ const App: React.FC = () => {
     });
   };
 
+  const handleShowBalance = async () => {
+    alert("ポイント情報を取得しています…");
+    const uid = localStorage.getItem("IZK_UID") || "preview-ui";
+    try {
+      const response = await fetch(buildRequestUrl("/wallet/balance"), {
+        headers: {
+          "content-type": "application/json",
+          "X-IZK-UID": uid,
+        },
+      });
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || `HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      const balance = typeof data.balance === "number" ? data.balance : 0;
+      alert(`残高: ${balance} pt`);
+    } catch (error) {
+      alert(`ポイント情報の取得に失敗しました: ${(error as Error).message}`);
+    }
+  };
+
+  const handleAdminButtonClick = async () => {
+    if (!adminMode) {
+      const input = window.prompt("管理パスワードを入力してください");
+      if (input === null) return;
+      const candidate = input.trim();
+      if (!candidate) {
+        window.alert("パスワードを入力してください");
+        return;
+      }
+      try {
+        const loginUrl = buildRequestUrl("/admin/login");
+        const response = await fetch(loginUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: candidate }),
+        });
+        if (!response.ok) {
+          const message = await response.text();
+          throw new Error(message || `HTTP ${response.status}`);
+        }
+        localStorage.setItem(ADMIN_STORAGE_KEY, "true");
+        setAdminMode(true);
+        setAdminError(null);
+        setAdminNotice(null);
+        setPasswordForm({ current: "", next: "", confirm: "" });
+        setShowAdminPanel(true);
+        showAdminToast("管理モードを有効化しました");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("CHAT_REQUEST_FAILED", { reason: "admin_login_failed", error });
+        if (message.includes("incorrect_password")) {
+          window.alert("パスワードが一致しません");
+        } else {
+          window.alert(`管理モードの認証に失敗しました: ${message}`);
+        }
+      }
+      return;
+    }
+    setAdminError(null);
+    setAdminNotice(null);
+    setPasswordForm({ current: "", next: "", confirm: "" });
+    setShowAdminPanel((prev) => !prev);
+  };
+
+  const handleProviderChange = (field: "provider" | "model", value: string) => {
+    setProviderForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveProvider = async () => {
+    setAdminError(null);
+    try {
+      setLoadingAdminConfig(true);
+      await apiFetch("/admin/provider", {
+        method: "POST",
+        body: JSON.stringify({
+          provider: providerForm.provider,
+          model: providerForm.model,
+        }),
+      });
+      showAdminToast("✅ プロバイダ設定を保存しました");
+      await fetchProviderConfig();
+    } catch (error) {
+      setAdminError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setLoadingAdminConfig(false);
+    }
+  };
+
+  const handleSaveApiKey = async () => {
+    if (!apiKeyInput.trim()) {
+      setAdminError("APIキーを入力してください");
+      return;
+    }
+    try {
+      setAdminError(null);
+      setLoadingAdminConfig(true);
+      await apiFetch("/admin/provider", {
+        method: "POST",
+        body: JSON.stringify({ apiKey: apiKeyInput.trim() }),
+      });
+      setApiKeyInput("");
+      showAdminToast("✅ APIキーを保存しました（サーバーで安全に保管）");
+      await fetchProviderConfig();
+    } catch (error) {
+      setAdminError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setLoadingAdminConfig(false);
+    }
+  };
+
+  const handleClearApiKey = async () => {
+    try {
+      setAdminError(null);
+      setLoadingAdminConfig(true);
+      await apiFetch("/admin/provider", {
+        method: "POST",
+        body: JSON.stringify({ apiKey: "" }),
+      });
+      setApiKeyInput("");
+      showAdminToast("✅ APIキーを削除しました");
+      await fetchProviderConfig();
+    } catch (error) {
+      setAdminError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setLoadingAdminConfig(false);
+    }
+  };
+
+  const handlePasswordChange = (field: keyof PasswordForm, value: string) => {
+    setAdminError(null);
+    setPasswordForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSavePassword = async () => {
+    const current = passwordForm.current.trim();
+    const next = passwordForm.next.trim();
+    const confirm = passwordForm.confirm.trim();
+    if (!current || !next) {
+      setAdminError("パスワードを入力してください");
+      return;
+    }
+    if (next.length < 6) {
+      setAdminError("新しいパスワードは6文字以上にしてください");
+      return;
+    }
+    if (next !== confirm) {
+      setAdminError("新しいパスワードが一致していません");
+      return;
+    }
+    try {
+      setAdminError(null);
+      setLoadingAdminConfig(true);
+      await apiFetch("/admin/password", {
+        method: "POST",
+        body: JSON.stringify({
+          current_password: current,
+          new_password: next,
+        }),
+      });
+      showAdminToast("✅ パスワードを変更しました");
+      setPasswordForm({ current: "", next: "", confirm: "" });
+      await fetchProviderConfig();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes("incorrect_password")) {
+        setAdminError("現在のパスワードが違います");
+      } else if (message.includes("invalid_new_password")) {
+        setAdminError("新しいパスワードは6文字以上にしてください");
+      } else {
+        setAdminError(message);
+      }
+    } finally {
+      setLoadingAdminConfig(false);
+    }
+  };
+
+  useEffect(() => {
+    if (adminMode && showAdminPanel) {
+      fetchProviderConfig();
+    }
+  }, [adminMode, showAdminPanel, fetchProviderConfig]);
+
+  useEffect(() => {
+    return () => {
+      if (adminNoticeTimerRef.current) {
+        window.clearTimeout(adminNoticeTimerRef.current);
+      }
+    };
+  }, []);
+
   return (
     <div className={`min-h-screen ${themeClasses.page}`}>
       <header className={`sticky top-0 z-10 ${themeClasses.header} border-b border-white/40 backdrop-blur-xl`}>
@@ -557,7 +1470,9 @@ const App: React.FC = () => {
               Mini BFF /chat 接続テストパネル
             </div>
           </div>
-          <div className="ml-auto flex items-center gap-3 text-sm">
+          <div className="ml-auto flex flex-wrap items-center gap-3 text-sm">
+            <ConnectionStatusPill status={connectionStatus} />
+            <HealthCheckIndicator checks={endpointChecks} />
             <HealthBadge health={health} loading={loadingHealth} error={healthError} />
             {selectedCardMeta && <CardChip name={selectedCardMeta.name} selected themeClasses={themeClasses} />}
             <button
@@ -566,17 +1481,50 @@ const App: React.FC = () => {
             >
               {theme === "light" ? "Dark" : "Light"}
             </button>
-            <a
-              href="#billing"
+            <button
+              onClick={handleShowBalance}
               className={`rounded-full px-4 py-2 text-sm font-semibold shadow ${themeClasses.badge}`}
             >
               ポイント表示
-            </a>
+            </button>
+            <button
+              onClick={handleAdminButtonClick}
+              className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-600 hover:border-purple-400 hover:text-purple-500 dark:border-zinc-700 dark:text-zinc-200 dark:hover:border-purple-400 dark:hover:text-purple-300"
+            >
+              {adminMode ? (showAdminPanel ? "管理を閉じる" : "管理") : "管理"}
+            </button>
           </div>
         </div>
       </header>
 
       <main className="mx-auto flex max-w-5xl flex-col gap-6 px-5 py-6">
+        {adminMode && showAdminPanel && (
+          <>
+            <AdminBillingPanel />
+            <AdminPanel
+              providerOptions={PROVIDER_OPTIONS}
+              providerForm={providerForm}
+              onProviderChange={handleProviderChange}
+              onSaveProvider={handleSaveProvider}
+              apiKeyInput={apiKeyInput}
+              onApiKeyChange={setApiKeyInput}
+              onSaveApiKey={handleSaveApiKey}
+              onClearApiKey={handleClearApiKey}
+              notice={adminNotice}
+              error={adminError}
+              loading={loadingAdminConfig}
+              passwordForm={passwordForm}
+              onPasswordChange={handlePasswordChange}
+              onSavePassword={handleSavePassword}
+              providerConfig={providerConfig}
+              healthChecks={endpointChecks}
+              onRetryHealthChecks={handleRetryHealthChecks}
+              healthChecksRunning={healthChecksRunning}
+              heartbeatDebug={heartbeatDebug}
+            />
+          </>
+        )}
+
         <section className={`relative rounded-3xl ${themeClasses.panel} shadow-xl`}>
           <div ref={listRef} className="h-[52vh] space-y-4 overflow-y-auto px-6 py-6">
             {messages.map((message, index) => (

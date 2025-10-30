@@ -1,0 +1,5 @@
+[
+  { "id": "talk_orb", "name": "Dr. Orb 会話", "cost": 10 },
+  { "id": "talk_madi", "name": "Miss Madi 会話", "cost": 8 },
+  { "id": "img_gen", "name": "画像生成", "cost": 50 }
+]
