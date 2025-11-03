@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "users": {
+    "admin": {
+      "balance": 10000,
+      "resetAt": "2025-11-03",
+      "transactions": {},
+      "lastGrantAt": "2025-11-03"
+    }
+  }
+}

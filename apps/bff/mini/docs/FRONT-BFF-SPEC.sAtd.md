@@ -9,10 +9,9 @@
 
 ## ✅ 接続とポート
 - BFF ローカルポート: `4117`
-- フロント開発モードポート: `4173` または `5173`
+- フロント開発モードポート: `5174`（Vite `strictPort: true` / 逃げ禁止）
 - フロント表示用 URL:
-  - `http://localhost:4173/preview/`（npm run dev）
-  - `http://localhost:5173/preview/`（vite auto assign）
+  - `http://localhost:5174/preview/`
 
 ---
 
@@ -25,6 +24,8 @@
 - バックエンドの仕様変更に追従しないハードコード
 
 フロントは `BFF_ENDPOINT + "/health/ping"` で取得する。
+BFF は `/admin/info` を提供し `health_url` を宣言する。
+UI の生存確認は静的ファイル `public/ui-alive.json` を参照する。
 
 ---
 
@@ -32,24 +33,50 @@
 - URL: `/chat/v1`
 - method: POST
 - request:
-```
-
+```json
 {
-"query": "ユーザ入力",
-"card_id": "任意",
-"temperature": 数値
+  "prompt": "ユーザー入力（必須）",
+  "query": "旧互換",
+  "text": "旧互換",
+  "cardId": "アクティブカードID",
+  "temperature": 0.0〜1.0,
+  "persona": { ...V2カードJSON... } // 任意 (提供推奨)
 }
-
 ```
 - response:
-  - reply(string)
-  - meta.provider
-  - meta.model
-  - meta.soul_core_paths
-  - meta.persona_path
+  - reply (string)
+  - meta.provider / meta.model / meta.endpoint
+  - meta.soul_core_paths (array)
+  - meta.persona_path (string|null)
+  - meta.persona_source (string|null)
+  - meta.persona_payload (object|null)
+
+
+## ✅ V2カード + 人格反映
+- フロントはアクティブな V2カードの JSON を `persona` フィールドに載せて `/chat/v1` へ送ること
+- BFF は `persona` を受け取り、存在する場合はソウルコアと合わせてシステムプロンプトに組み込む
+- `persona` が無い場合のみ `loadPersona(cardId)` で既存の persona.json を利用する
+- レスポンスの `meta.persona_payload` に実際に使用した JSON を返し、デバッグとトレーサビリティを担保する
+- キャラクターは V2カードの `persona` / `system_behavior` を最優先で反映し、AI口調を禁止とする
 
 ---
 
+## ✅ Wallet API
+- ストアファイル: `apps/bff/mini/data/wallet.json` （存在しない場合は自動生成）
+- `GET /wallet/balance`
+  - Header: `X-IZK-UID`
+  - Response: `{ "userId", "balance", "resetAt", "dailyAllowance" }`
+- `POST /wallet/consume`
+  - Body: `{ amount: number, sku?, idempotency_key? }`
+  - 200で新しい残高を返す。残高不足は 402。
+- `POST /wallet/grant`
+  - Header: `X-IZK-UID: admin`
+  - Body: `{ userId, amount, transactionId? }`
+  - 200で残高を返す。`transactionId` 重複は 409。
+- `POST /wallet/redeem` は互換用。`amount` を加算し、内部で `grant` と同等に処理する。
+- すべてのレスポンスは `unit: "pt"` を含み、失敗時はエラーログを BFF が出力する。
+
+---
 ## ✅ ソウルコア
 - BFF 起動時に自動ロード
 - 対象ディレクトリ: `apps/persona-engine/soul-core/*.md`

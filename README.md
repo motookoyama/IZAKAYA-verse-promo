@@ -50,6 +50,7 @@ cd apps/frontend/preview-ui
 npm install
 npm run dev
 npm run build # dist/ 出力（Docker/Nginx 用）
+# dev サーバーは `http://localhost:5174/preview/` 固定。ポート衝突時に自動で逃げない。
 
 # Mini BFF（正規バックエンド）
 cd apps/bff/mini
@@ -69,6 +70,7 @@ Mini BFF には `/paypal/ipn/notify` が統合されており、PayPal からの
 ```bash
 # 1. 依存サービスを起動
 scripts/start_local.sh
+# 👉 UI は常に `http://localhost:5174/preview/` で起動します。ポートが塞がっている場合はスクリプトが自動で開放します。
 
 # 2. ダミー IPN を送信
 curl -X POST http://localhost:4117/paypal/ipn/notify \

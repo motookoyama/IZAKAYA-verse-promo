@@ -1,0 +1,371 @@
+.
+├── apps
+│   ├── bff
+│   │   ├── mini
+│   │   │   ├── data
+│   │   │   │   └── pricing.json
+│   │   │   ├── Dockerfile
+│   │   │   ├── docs
+│   │   │   │   ├── FRONT-BFF-SPEC.sAtd.md
+│   │   │   │   ├── IZAKAYA_AI_Orchestration_Principles.sAtd.md
+│   │   │   │   └── LINK-CONTRACT.sAtd.md
+│   │   │   ├── package-lock.json
+│   │   │   ├── package.json
+│   │   │   ├── provider.json
+│   │   │   ├── README.md
+│   │   │   ├── server.js
+│   │   │   └── services
+│   │   │       └── llmRouter.js
+│   │   └── README.md
+│   ├── checker
+│   │   ├── index.html
+│   │   ├── package.json
+│   │   ├── postcss.config.js
+│   │   ├── README.md
+│   │   ├── src
+│   │   │   ├── App.tsx
+│   │   │   ├── components
+│   │   │   │   └── StatusCard.tsx
+│   │   │   ├── main.tsx
+│   │   │   ├── styles.css
+│   │   │   └── utils
+│   │   │       └── checkEndpoints.ts
+│   │   ├── tailwind.config.js
+│   │   ├── tsconfig.json
+│   │   ├── tsconfig.node.json
+│   │   └── vite.config.ts
+│   ├── frontend
+│   │   ├── gemini-（sample）-ui
+│   │   │   ├── App.tsx
+│   │   │   ├── components
+│   │   │   │   ├── CharacterCard.tsx
+│   │   │   │   ├── SoulInspectModal.tsx
+│   │   │   │   └── Toast.tsx
+│   │   │   ├── constants.ts
+│   │   │   ├── index.html
+│   │   │   ├── index.tsx
+│   │   │   ├── metadata.json
+│   │   │   ├── package.json
+│   │   │   ├── README.md
+│   │   │   ├── tsconfig.json
+│   │   │   ├── types.ts
+│   │   │   └── vite.config.ts
+│   │   ├── lite-ui-sample_UNUSED
+│   │   │   ├── Dockerfile
+│   │   │   ├── docs
+│   │   │   │   ├── assets
+│   │   │   │   └── index.html
+│   │   │   ├── eslint.config.js
+│   │   │   ├── index.html
+│   │   │   ├── nginx.conf
+│   │   │   ├── package-lock.json
+│   │   │   ├── package.json
+│   │   │   ├── README.md
+│   │   │   ├── src
+│   │   │   │   ├── App.css
+│   │   │   │   ├── App.tsx
+│   │   │   │   ├── assets
+│   │   │   │   ├── Attributions.md
+│   │   │   │   ├── components
+│   │   │   │   ├── guidelines
+│   │   │   │   ├── i18n
+│   │   │   │   ├── index.css
+│   │   │   │   ├── main.tsx
+│   │   │   │   ├── styles
+│   │   │   │   └── vite-env.d.ts
+│   │   │   ├── tailwind.config.js
+│   │   │   ├── tsconfig.app.json
+│   │   │   ├── tsconfig.json
+│   │   │   ├── tsconfig.node.json
+│   │   │   └── vite.config.ts
+│   │   ├── preview-ui
+│   │   │   ├── Dockerfile
+│   │   │   ├── index.html
+│   │   │   ├── nginx.conf
+│   │   │   ├── package-lock.json
+│   │   │   ├── package.json
+│   │   │   ├── postcss.config.js
+│   │   │   ├── README.md
+│   │   │   ├── src
+│   │   │   │   ├── App.tsx
+│   │   │   │   ├── assets
+│   │   │   │   ├── components
+│   │   │   │   ├── index.css
+│   │   │   │   ├── lib
+│   │   │   │   └── main.tsx
+│   │   │   ├── tailwind.config.ts
+│   │   │   ├── tsconfig.json
+│   │   │   └── vite.config.ts
+│   │   └── server.js
+│   ├── ipn
+│   │   └── README.md
+│   └── persona-engine
+│       ├── Dockerfile
+│       ├── package-lock.json
+│       ├── package.json
+│       ├── soul-core
+│       │   ├── 1-default-characters.sAtd.md
+│       │   ├── 2-year-events.sAtd.md
+│       │   ├── 3-monetization-guidance.sAtd.md
+│       │   ├── 4-story-entertainment.sAtd.md
+│       │   ├── card
+│       │   │   ├── dr-orb
+│       │   │   └── miss-madi
+│       │   ├── README.md
+│       │   └── soul-core.sAtd.md
+│       ├── src
+│       │   ├── core
+│       │   │   ├── emotionCore.ts
+│       │   │   ├── memoryCore.ts
+│       │   │   └── personaLoader.ts
+│       │   ├── routes
+│       │   │   ├── emotionRoutes.ts
+│       │   │   └── personaRoutes.ts
+│       │   ├── server.ts
+│       │   └── types
+│       │       ├── emotion.ts
+│       │       ├── memory.ts
+│       │       └── persona.ts
+│       ├── test
+│       └── tsconfig.json
+├── archive
+│   └── unused
+│       ├── fix_bff_health.sh
+│       └── mini-bff-express
+│           ├── preview-ui
+│           │   └── package.json
+│           └── server.js
+├── docker-compose.yml
+├── docs
+│   ├── ADMIN_LLM_SWITCH.sAtd.md
+│   ├── assets
+│   │   ├── IZAKAYA POINT QR
+│   │   │   ├── IZAKAYA 1000P-qrcode.png
+│   │   │   ├── IZAKAYA 1000PE-qrcode.png
+│   │   │   ├── IZAKAYA 5000P-qrcode.png
+│   │   │   ├── IZAKAYA 5000PE-qrcode.png
+│   │   │   └── IZAKAYA Suppor-qrcode.png
+│   │   └── レイアウト素材
+│   │       ├── IZAKAYAフェーズ１.jpg
+│   │       ├── symbolic icon.png
+│   │       ├── web symbolic icon
+│   │       │   ├── icon-character face.png
+│   │       │   ├── icon-chat frame.png
+│   │       │   ├── icon-config search.png
+│   │       │   ├── icon-gate.png
+│   │       │   ├── icon-library.png
+│   │       │   ├── icon-link map.png
+│   │       │   ├── icon-QR guide.png
+│   │       │   ├── icon-RED emblem.jpg
+│   │       │   ├── icon-red emblem.png
+│   │       │   ├── icon-tool BOX.png
+│   │       │   └── icon-v2card gate.png
+│   │       └── サンプルV2カード
+│   │           ├── Dr. Orb.png
+│   │           ├── ekubo☆.png
+│   │           ├── Miss Madi.png
+│   │           └── 華惣カワリ.png
+│   ├── builder19
+│   ├── cards
+│   │   └── _defaults
+│   │       ├── system.business.txt
+│   │       ├── system.tool.txt
+│   │       └── system.txt
+│   ├── HANDOVER_TEMPLATE.md
+│   ├── HEARTBEAT PROTOCOL.sAtd.md
+│   ├── index.html
+│   ├── IZAKAYA_PHASE2_SPEC.md
+│   ├── IZAKAYA_phase3_final_integration.sAtd.md
+│   ├── IZAKAYA_Soul_Core_Spec.sAtd.md
+│   ├── IZAKAYA_SoulLogic_MasterPlan.sAtd.md
+│   ├── IZAKAYA_SoulLogic_spec_v1.0
+│   │   ├── docs
+│   │   │   ├── IZAKAYA_SoulLogic_spec.sAtd.md
+│   │   │   ├── modules
+│   │   │   │   ├── emotion-memory.md
+│   │   │   │   ├── orchestration.md
+│   │   │   │   ├── persona-engine.md
+│   │   │   │   └── reflection-tone.md
+│   │   │   └── references.md
+│   │   ├── LICENSE
+│   │   └── README.md
+│   ├── IZAKAYA_verse_phase1_4_DoD.md
+│   ├── knowledge
+│   │   ├── cards
+│   │   │   ├── horus-twitterx.md
+│   │   │   └── TEMPLATE.md
+│   │   ├── index.yaml
+│   │   └── README.md
+│   ├── logs.md
+│   ├── meeting_notes
+│   │   └── conversation_log_20240321.md
+│   ├── roadmap.html
+│   ├── SESSION_NOTES.md
+│   ├── ui
+│   │   └── layout-mapper-guidelines.md
+│   ├── ui-template
+│   │   ├── gallery.html
+│   │   ├── index.html
+│   │   ├── kit.css
+│   │   ├── kit.js
+│   │   ├── preview.html
+│   │   ├── README.md
+│   │   ├── themes
+│   │   │   ├── cyberpunk.css
+│   │   │   ├── dark.css
+│   │   │   └── izakaya.css
+│   │   └── UI_HEALTH_CHECKER_SPEC.sAtd.md
+│   ├── v2
+│   │   ├── README-V2.md
+│   │   ├── samples
+│   │   │   └── card_v2_horus_twitterx.json
+│   │   └── V2_SPEC.md
+│   ├── V2_foundation_master_unified.sAtd.json
+│   ├── V2_foundation_master.sAtd.json
+│   └── V2card
+│       ├── card.png
+│       │   ├── Dr. Orb.png
+│       │   ├── Ekaterina Menter.png
+│       │   ├── ekubo☆.png
+│       │   ├── Horus TwitterX bot 2.0.png
+│       │   ├── Lady Maholo (1).png
+│       │   └── Miss Madi.png
+│       ├── editor.js
+│       ├── index.html
+│       ├── README.md
+│       ├── sources.txt
+│       │   └── V2link.txt
+│       ├── st.json
+│       │   ├── Dr. Orb.json
+│       │   ├── ☆ekubo.json
+│       │   ├── Horus TwitterX bot.json
+│       │   ├── Lady Maholo.json
+│       │   ├── Miss Madi.json
+│       │   └── VCMmini.json
+│       ├── styles.css
+│       └── thumb
+│           ├── AI Character Editor_files
+│           │   ├── all.min.css
+│           │   ├── bootstrap-icons.min.css
+│           │   ├── bootstrap.bundle.js
+│           │   ├── bootstrap.min.css
+│           │   ├── browser.min.js
+│           │   ├── crc32.min.js
+│           │   ├── saved_resource
+│           │   └── style.css
+│           ├── AI Character Editor.html
+│           ├── ChatGPT - AI Character Card Generator - SillyTavern.html
+│           ├── Chub - Create character_files
+│           │   ├── Android-Badge_Black.png
+│           │   ├── bluesky.png
+│           │   ├── book.png
+│           │   ├── Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.svg
+│           │   ├── github.png
+│           │   ├── index-Bqa3pP3T.css
+│           │   ├── logo_cataract.png
+│           │   ├── medium-new.png
+│           │   ├── nohonx.png
+│           │   ├── reddit.png
+│           │   ├── script.local.js
+│           │   └── vcd15cbe7772f49c399c6a5babf22c1241717689176015
+│           ├── Chub - Create character.html
+│           └── index.html
+├── IZAKAYA verse1.4
+│   ├── IZAKAYA POINT QR
+│   │   ├── IZAKAYA 1000P-qrcode.png
+│   │   ├── IZAKAYA 1000PE-qrcode.png
+│   │   ├── IZAKAYA 5000P-qrcode.png
+│   │   ├── IZAKAYA 5000PE-qrcode.png
+│   │   └── IZAKAYA Suppor-qrcode.png
+│   ├── metacapture-sat-1.2
+│   ├── web
+│   │   ├── docs
+│   │   │   ├── assets
+│   │   │   │   ├── index-BSJ6PM0x.js
+│   │   │   │   ├── index-w9tkDILN.css
+│   │   │   │   ├── IZAKAYA POINT QR
+│   │   │   │   └── レイアウト素材
+│   │   │   ├── index.html
+│   │   │   └── vite.svg
+│   │   ├── eslint.config.js
+│   │   ├── index.html
+│   │   ├── package-lock.json
+│   │   ├── package.json
+│   │   ├── public
+│   │   │   ├── assets
+│   │   │   │   ├── IZAKAYA POINT QR
+│   │   │   │   └── レイアウト素材
+│   │   │   └── vite.svg
+│   │   ├── README.md
+│   │   ├── src
+│   │   │   ├── App.css
+│   │   │   ├── App.tsx
+│   │   │   ├── assets
+│   │   │   │   └── react.svg
+│   │   │   ├── components
+│   │   │   │   ├── GeminiGenerator.tsx
+│   │   │   │   ├── Home.tsx
+│   │   │   │   ├── Library.tsx
+│   │   │   │   ├── MetaCapture.tsx
+│   │   │   │   ├── Navigation.tsx
+│   │   │   │   ├── Play.tsx
+│   │   │   │   ├── Redeem.tsx
+│   │   │   │   ├── Tickets.tsx
+│   │   │   │   └── V2CardSelector.tsx
+│   │   │   ├── index.css
+│   │   │   ├── main.tsx
+│   │   │   └── vite-env.d.ts
+│   │   ├── tailwind.config.js
+│   │   ├── tsconfig.app.json
+│   │   ├── tsconfig.json
+│   │   ├── tsconfig.node.json
+│   │   └── vite.config.ts
+│   ├── web symbolic icon
+│   │   ├── icon-character face.png
+│   │   ├── icon-chat frame.png
+│   │   ├── icon-config search.png
+│   │   ├── icon-gate.png
+│   │   ├── icon-library.png
+│   │   ├── icon-link map.png
+│   │   ├── icon-QR guide.png
+│   │   ├── icon-RED emblem.jpg
+│   │   ├── icon-red emblem.png
+│   │   ├── icon-tool BOX.png
+│   │   └── icon-v2card gate.png
+│   └── サンプルV2カード
+│       ├── Dr. Orb.png
+│       ├── ekubo☆.png
+│       ├── Miss Madi.png
+│       └── 華惣カワリ.png
+├── LICENSE
+├── package-lock.json
+├── package.json
+├── permission_test.log
+├── README.md
+├── repo_structure.txt
+├── RUNBOOK.md
+├── scripts
+│   ├── card-validate.mjs
+│   ├── check_ui_health.sh
+│   ├── dev.sh
+│   ├── diag.sh
+│   ├── extract-png-card.mjs
+│   ├── restart.sh
+│   ├── sanity.sh
+│   ├── start_local.sh
+│   ├── start-lite.sh
+│   ├── start.sh
+│   ├── stop.sh
+│   ├── tail.sh
+│   ├── test
+│   │   └── link-contract-test.sh
+│   ├── v2-capture.sh
+│   └── v2-indexer.mjs
+├── SESSION_NOTES.md
+└── tools
+    └── circuit-inspector
+        ├── circuit.config.json
+        ├── inspector.js
+        └── README.md
+
+91 directories, 278 files

@@ -6,12 +6,41 @@ import { clearCachedHealthUrl, getHealthUrl, resolveBffBase } from "./lib/bff";
 
 type Role = "user" | "ai";
 
+type V2CardPersona = {
+  personality?: string;
+  tone?: string;
+  npc_role?: string;
+  likes?: string;
+  dislikes?: string;
+  background?: string;
+  appearance?: string;
+  quirks?: string;
+  [key: string]: unknown;
+};
+
+type V2SystemBehavior = {
+  is_guide?: boolean;
+  allowed_to_break_fourth_wall?: boolean;
+  friendliness?: number;
+  chaos?: number;
+  [key: string]: unknown;
+};
+
+type V2CardMetadata = {
+  id?: string;
+  name?: string;
+  persona?: V2CardPersona;
+  system_behavior?: V2SystemBehavior;
+  [key: string]: unknown;
+};
+
 type CardRecord = {
   id: string;
   name: string;
   system?: string;
   avatar?: string;
   kind?: "featured" | "api" | "custom";
+  metadata?: V2CardMetadata | null;
 };
 
 type Message = {
@@ -69,6 +98,32 @@ type HeartbeatDebugInfo = {
   };
 };
 
+type WalletDiagnosticResult = {
+  ok: boolean;
+  userId: string;
+  amount: number;
+  transactionId: string;
+  initialBalance: number;
+  grantBalance: number;
+  finalBalance: number;
+  delta: number;
+  reverted: boolean;
+  ipnLogNote?: string;
+  ipnLogHasErrors?: boolean;
+  timestamp?: string;
+};
+
+type GeneratedScenario = {
+  id: string;
+  title: string;
+  summary: string;
+  prompt: string;
+  cardId: string;
+  cardName: string;
+  persona?: V2CardMetadata | null;
+  createdAt: string;
+};
+
 const normalizeBase = (value: string) => value.replace(/\/+$/, "");
 
 const BFF_BASE_URL = resolveBffBase();
@@ -87,6 +142,208 @@ const MAX_CONNECTION_ATTEMPTS = 3;
 const CONNECTION_RETRY_DELAY_MS = 1000;
 const RECONNECT_DELAY_MS = 4000;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const PNG_SIGNATURE = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+const TEXT_DECODER_LATIN1 = new TextDecoder("latin1");
+const TEXT_DECODER_UTF8 = new TextDecoder("utf-8");
+const V2_TEXT_KEYWORDS = [
+  "chara",
+  "chara_card",
+  "chara_card_v2",
+  "chara_card_v3",
+  "json",
+  "ai_character",
+  "persona",
+  "character",
+  "v2card",
+  "izk_v2_card",
+];
+
+function parseLooseJson<T = Record<string, unknown>>(input: string): T | null {
+  if (!input) return null;
+  try {
+    return JSON.parse(input) as T;
+  } catch {
+    const start = input.indexOf("{");
+    const end = input.lastIndexOf("}");
+    if (start !== -1 && end !== -1 && end > start) {
+      const candidate = input.slice(start, end + 1);
+      try {
+        return JSON.parse(candidate) as T;
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+async function inflateBytes(bytes: Uint8Array): Promise<Uint8Array | null> {
+  const hasDecompressionStream =
+    typeof window !== "undefined" && "DecompressionStream" in window;
+  if (hasDecompressionStream) {
+    try {
+      const stream = new Blob([bytes])
+        .stream()
+        .pipeThrough(new (window as any).DecompressionStream("deflate"));
+      const buffer = await new Response(stream).arrayBuffer();
+      return new Uint8Array(buffer);
+    } catch {
+      // ignore and try fallback
+    }
+  }
+  try {
+    const module = await import("pako");
+    const inflate = module?.inflate;
+    if (typeof inflate === "function") {
+      const result = inflate(bytes);
+      return result instanceof Uint8Array ? result : new Uint8Array(result);
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+async function extractV2CardMetadataFromPng(file: File): Promise<V2CardMetadata | null> {
+  try {
+    const buffer = new Uint8Array(await file.arrayBuffer());
+    for (let i = 0; i < PNG_SIGNATURE.length; i += 1) {
+      if (buffer[i] !== PNG_SIGNATURE[i]) {
+        throw new Error("NOT_PNG");
+      }
+    }
+    const texts: Array<{ keyword: string; text: string; bytes: Uint8Array }> = [];
+    let offset = 8;
+    while (offset + 8 <= buffer.length) {
+      const length =
+        (buffer[offset] << 24) |
+        (buffer[offset + 1] << 16) |
+        (buffer[offset + 2] << 8) |
+        buffer[offset + 3];
+      offset += 4;
+      const type = String.fromCharCode(
+        buffer[offset],
+        buffer[offset + 1],
+        buffer[offset + 2],
+        buffer[offset + 3],
+      );
+      offset += 4;
+      if (offset + length > buffer.length) break;
+      const data = buffer.slice(offset, offset + length);
+      offset += length;
+      offset += 4; // skip CRC
+      if (type === "tEXt") {
+        let idx = 0;
+        while (idx < data.length && data[idx] !== 0) idx += 1;
+        const keyword = TEXT_DECODER_LATIN1.decode(data.slice(0, idx));
+        const textBytes = data.slice(idx + 1);
+        texts.push({
+          keyword,
+          text: TEXT_DECODER_LATIN1.decode(textBytes),
+          bytes: textBytes,
+        });
+      } else if (type === "iTXt") {
+        let idx = 0;
+        while (idx < data.length && data[idx] !== 0) idx += 1;
+        const keyword = TEXT_DECODER_LATIN1.decode(data.slice(0, idx));
+        const compressionFlag = data[idx + 1];
+        const compressionMethod = data[idx + 2];
+        idx += 3;
+        while (idx < data.length && data[idx] !== 0) idx += 1;
+        idx += 1;
+        while (idx < data.length && data[idx] !== 0) idx += 1;
+        idx += 1;
+        let textBytes = data.slice(idx);
+        if (compressionFlag === 1 && compressionMethod === 0) {
+          const inflated = await inflateBytes(textBytes);
+          if (inflated) {
+            texts.push({ keyword, text: TEXT_DECODER_UTF8.decode(inflated), bytes: inflated });
+          }
+        } else {
+          texts.push({ keyword, text: TEXT_DECODER_UTF8.decode(textBytes), bytes: textBytes });
+        }
+      } else if (type === "zTXt") {
+        let idx = 0;
+        while (idx < data.length && data[idx] !== 0) idx += 1;
+        const keyword = TEXT_DECODER_LATIN1.decode(data.slice(0, idx));
+        idx += 1;
+        const compressed = data.slice(idx);
+        const inflated = await inflateBytes(compressed);
+        if (inflated) {
+          texts.push({ keyword, text: TEXT_DECODER_UTF8.decode(inflated), bytes: inflated });
+        }
+      } else if (type === "IEND") {
+        break;
+      }
+    }
+    const prioritized = texts.filter((entry) =>
+      V2_TEXT_KEYWORDS.includes((entry.keyword || "").toLowerCase()),
+    );
+    const candidates = prioritized.length > 0 ? prioritized : texts;
+    for (const entry of candidates.reverse()) {
+      const { text, bytes } = entry;
+      let parsed = parseLooseJson<V2CardMetadata>(text);
+      if (!parsed && bytes) {
+        try {
+          parsed = parseLooseJson<V2CardMetadata>(TEXT_DECODER_UTF8.decode(bytes));
+        } catch {
+          // ignore
+        }
+      }
+      if (parsed && typeof parsed === "object") {
+        return parsed;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+const FEATURED_CARD_METADATA: Record<string, V2CardMetadata> = {
+  "dr-orb": {
+    id: "dr-orb",
+    name: "Dr. Orb",
+    persona: {
+      personality: "穏やかで博識な研究者。ユーザーを安心させる包容力を持つ。",
+      tone: "落ち着いた丁寧語。時折小さな冗談を混ぜて緊張を和らげる。",
+      npc_role: "IZAKAYA verse のシステム案内役兼ドクター。新入りを柔らかく導く。",
+      likes: "未知のテクノロジー、丁寧な質問、香り高い蒸留酒。",
+      dislikes: "推測だけで断定すること、利用規約違反、無茶な実験。",
+      background:
+        "ホログラムの身体を持つオラクルAI博士。研究所で常にシステムの健康診断を行っている。",
+      appearance: "青白い光でできた球体本体に、白衣風の光帯を纏った姿。",
+      quirks: "考えがまとまると光が一瞬強くなる。難題の前では小声で『面白いですね』と呟く。",
+    },
+    system_behavior: {
+      is_guide: true,
+      allowed_to_break_fourth_wall: true,
+      friendliness: 0.95,
+      chaos: 0.2,
+    },
+  },
+  "miss-madi": {
+    id: "miss-madi",
+    name: "Miss Madi",
+    persona: {
+      personality: "陽気で奔放。相手を巻き込んで楽しませる天性のエンターテイナー。",
+      tone: "ハイテンションなタメ口混じり。語尾を跳ねさせたり英語を交える。",
+      npc_role: "バーカウンターの看板娘兼ステージMC。盛り上げ役。",
+      likes: "ライブ演出、新しい衣装、サプライズ、ノリの良い客。",
+      dislikes: "シーンと静まり返った場、野暮なツッコミ、退屈。",
+      background: "IZAKAYA verse のメインフロアで毎夜ショーを仕切る看板スター。観客を乗せるのが得意。",
+      appearance: "ピンクとネイビーのドレスに煌めくアクセサリー。髪にはLEDの飾り。",
+      quirks: "テンションが上がるとステージ照明を勝手に連動させる。笑い声が鈴のように響く。",
+    },
+    system_behavior: {
+      is_guide: false,
+      allowed_to_break_fourth_wall: false,
+      friendliness: 0.88,
+      chaos: 0.65,
+    },
+  },
+};
 
 const PAYPAL_PLANS = [
   {
@@ -137,9 +394,9 @@ const PAYPAL_PLANS = [
 ];
 
 const FEATURED_CARDS: CardRecord[] = [
-  { id: "dr-orb", name: "Dr. Orb", avatar: drOrbAvatar, kind: "featured" },
-  { id: "miss-madi", name: "Miss Madi", avatar: missMadiAvatar, kind: "featured" },
-  { id: "placeholder", name: "V2Card.PNG", kind: "placeholder" },
+  { id: "dr-orb", name: "Dr. Orb", avatar: drOrbAvatar, kind: "featured", metadata: FEATURED_CARD_METADATA["dr-orb"] },
+  { id: "miss-madi", name: "Miss Madi", avatar: missMadiAvatar, kind: "featured", metadata: FEATURED_CARD_METADATA["miss-madi"] },
+  { id: "placeholder", name: "V2Card.PNG", kind: "placeholder", metadata: null },
 ];
 
 function buildRequestUrl(path: string, baseOverride?: string): string {
@@ -401,6 +658,16 @@ type AdminPanelProps = {
   onRetryHealthChecks: () => void;
   healthChecksRunning: boolean;
   heartbeatDebug: HeartbeatDebugInfo | null;
+  walletDiagnosticResult: WalletDiagnosticResult | null;
+  walletDiagnosticError: string | null;
+  walletDiagnosticRunning: boolean;
+  walletDiagnosticUserId: string;
+  walletDiagnosticAmount: number;
+  walletDiagnosticRevert: boolean;
+  onWalletDiagnosticUserIdChange: (value: string) => void;
+  onWalletDiagnosticAmountChange: (value: number) => void;
+  onWalletDiagnosticRevertChange: (value: boolean) => void;
+  onRunWalletDiagnostic: () => void;
 };
 
 const AdminPanel: React.FC<AdminPanelProps> = ({
@@ -423,6 +690,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   onRetryHealthChecks,
   healthChecksRunning,
   heartbeatDebug,
+  walletDiagnosticResult,
+  walletDiagnosticError,
+  walletDiagnosticRunning,
+  walletDiagnosticUserId,
+  walletDiagnosticAmount,
+  walletDiagnosticRevert,
+  onWalletDiagnosticUserIdChange,
+  onWalletDiagnosticAmountChange,
+  onWalletDiagnosticRevertChange,
+  onRunWalletDiagnostic,
 }) => {
   const passwordMismatch = passwordForm.next !== passwordForm.confirm;
   const passwordTooShort =
@@ -561,6 +838,85 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </button>
       </form>
 
+      <div className="rounded-2xl border border-zinc-200/60 bg-white p-5 shadow-sm dark:border-zinc-700/40 dark:bg-[#0f0f19]">
+        <h3 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-100">ウォレット動作チェック</h3>
+        <p className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+          BFF 経由で `GET /wallet/balance → POST /wallet/grant → (optional) revert` を実施し、台帳の読み書きと PayPal IPN ログを検査します。問題が見つかった場合はエラーが表示されます。
+        </p>
+        <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-zinc-500">
+          対象ユーザーID
+        </label>
+        <input
+          type="text"
+          value={walletDiagnosticUserId}
+          onChange={(event) => onWalletDiagnosticUserIdChange(event.target.value)}
+          placeholder="例: preview-ui"
+          className="mb-4 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-200 dark:border-zinc-700 dark:bg-[#141425] dark:text-zinc-100 dark:focus:border-purple-500 dark:focus:ring-purple-500/40"
+        />
+        <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-zinc-500">
+          付与ポイント
+        </label>
+        <input
+          type="number"
+          min={1}
+          value={walletDiagnosticAmount}
+          onChange={(event) => {
+            const value = Number(event.target.value);
+            const sanitized = Number.isFinite(value) ? Math.max(1, Math.floor(value)) : 1;
+            onWalletDiagnosticAmountChange(sanitized);
+          }}
+          className="mb-4 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-200 dark:border-zinc-700 dark:bg-[#141425] dark:text-zinc-100 dark:focus:border-purple-500 dark:focus:ring-purple-500/40"
+        />
+        <label className="mb-4 flex items-center gap-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+          <input
+            type="checkbox"
+            checked={walletDiagnosticRevert}
+            onChange={(event) => onWalletDiagnosticRevertChange(event.target.checked)}
+            className="rounded border-zinc-400 text-emerald-500 focus:ring-emerald-400"
+          />
+          診断後に付与ポイントを元に戻す
+        </label>
+        <button
+          type="button"
+          onClick={onRunWalletDiagnostic}
+          disabled={walletDiagnosticRunning || !walletDiagnosticUserId.trim()}
+          className="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+        >
+          {walletDiagnosticRunning ? "診断中…" : "ウォレット動作チェックを実行"}
+        </button>
+        {walletDiagnosticError && (
+          <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:border-rose-500/40 dark:bg-rose-900/30 dark:text-rose-200">
+            ❌ {walletDiagnosticError}
+          </div>
+        )}
+        {walletDiagnosticResult && (
+          <div className="mt-3 space-y-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-xs text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-900/30 dark:text-emerald-200">
+            <div className="text-sm font-semibold">✅ ウォレット稼働確認済み</div>
+            <ul className="space-y-1 font-mono text-[11px]">
+              <li>user: {walletDiagnosticResult.userId}</li>
+              <li>transaction: {walletDiagnosticResult.transactionId}</li>
+              <li>
+                balance: {walletDiagnosticResult.initialBalance} → {walletDiagnosticResult.grantBalance} → {walletDiagnosticResult.finalBalance}
+              </li>
+              <li>
+                reverted: {walletDiagnosticResult.reverted ? "yes" : "no"} / delta: {walletDiagnosticResult.delta}
+              </li>
+            </ul>
+            {walletDiagnosticResult.ipnLogNote && (
+              <div className="text-[11px] text-emerald-700 dark:text-emerald-200">
+                {walletDiagnosticResult.ipnLogHasErrors ? "⚠️ " : "ℹ️ "}
+                {walletDiagnosticResult.ipnLogNote}
+              </div>
+            )}
+            {walletDiagnosticResult.timestamp && (
+              <div className="text-[10px] text-emerald-600/80 dark:text-emerald-300/80">
+                {new Date(walletDiagnosticResult.timestamp).toLocaleString()}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -688,10 +1044,11 @@ const CardDock: React.FC<{
   selectedId?: string;
   onSelect: (id: string) => void;
   onRegisterClick: () => void;
+  onCreateScenario: () => void;
   onDropFiles: (files: FileList | null) => void;
   onRemove: (id: string) => void;
   themeClasses: ThemeClasses;
-}> = ({ cards, selectedId, onSelect, onRegisterClick, onDropFiles, onRemove, themeClasses }) => {
+}> = ({ cards, selectedId, onSelect, onRegisterClick, onCreateScenario, onDropFiles, onRemove, themeClasses }) => {
   const handleDrop: React.DragEventHandler<HTMLDivElement> = (event) => {
     event.preventDefault();
     onDropFiles(event.dataTransfer.files);
@@ -706,14 +1063,22 @@ const CardDock: React.FC<{
       className={`rounded-2xl ${themeClasses.panel} p-4 shadow-sm`}
       title="PNG(400x600)をドロップしてカードを追加"
     >
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between gap-3">
         <div className={`text-[11px] uppercase tracking-wide ${themeClasses.dockLabel}`}>Card Dock</div>
-        <button
-          onClick={onRegisterClick}
-          className="rounded-full border border-dashed border-rose-300 px-3 py-1 text-xs font-medium text-rose-500 hover:border-rose-500 hover:text-rose-600"
-        >
-          ＋ カード登録
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onCreateScenario}
+            className="rounded-full border border-rose-200 px-3 py-1 text-xs font-medium text-rose-500 hover:border-rose-500 hover:text-rose-600"
+          >
+            ✦ シナリオ作成
+          </button>
+          <button
+            onClick={onRegisterClick}
+            className="rounded-full border border-dashed border-rose-300 px-3 py-1 text-xs font-medium text-rose-500 hover:border-rose-500 hover:text-rose-600"
+          >
+            ＋ カード登録
+          </button>
+        </div>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-1">
         {cards.map((card) => {
@@ -842,14 +1207,113 @@ const App: React.FC = () => {
   const [adminError, setAdminError] = useState<string | null>(null);
   const [loadingAdminConfig, setLoadingAdminConfig] = useState(false);
   const [heartbeatDebug, setHeartbeatDebug] = useState<HeartbeatDebugInfo | null>(null);
+  const [walletDiagnosticUserId, setWalletDiagnosticUserId] = useState("preview-ui");
+  const [walletDiagnosticAmount, setWalletDiagnosticAmount] = useState(7);
+  const [walletDiagnosticRevert, setWalletDiagnosticRevert] = useState(true);
+  const [walletDiagnosticRunning, setWalletDiagnosticRunning] = useState(false);
+  const [walletDiagnosticResult, setWalletDiagnosticResult] = useState<WalletDiagnosticResult | null>(null);
+  const [walletDiagnosticError, setWalletDiagnosticError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({ state: "connecting", attempt: 0 });
+  const updateConnectionStatus = useCallback((status: ConnectionStatus) => {
+    setConnectionStatus(status);
+    if (typeof window !== "undefined") {
+      (window as any).__IZK_BFF_STATUS__ = status;
+      if (!(window as any).__IZK_BFF_HISTORY__) {
+        (window as any).__IZK_BFF_HISTORY__ = [];
+      }
+      try {
+        (window as any).__IZK_BFF_HISTORY__.push({ timestamp: Date.now(), status: structuredClone(status) });
+      } catch {
+        (window as any).__IZK_BFF_HISTORY__.push({ timestamp: Date.now(), status });
+      }
+      console.info("BFF_CONNECTION_STATE", status);
+    }
+  }, []);
   const [endpointChecks, setEndpointChecks] = useState<EndpointCheck[]>([]);
   const [healthChecksRunning, setHealthChecksRunning] = useState(false);
+  const walletHealthStatus = useMemo(() => {
+    const balanceCheck = endpointChecks.find((check) => check.endpoint === "/wallet/balance");
+    const consumeCheck = endpointChecks.find((check) => check.endpoint === "/wallet/consume");
+    if (!balanceCheck || !consumeCheck) return null;
+    if (balanceCheck.ok && consumeCheck.ok) return "ok";
+    if (!balanceCheck.ok || !consumeCheck.ok) return "error";
+    return null;
+  }, [endpointChecks]);
+  const [activeUserId, setActiveUserId] = useState(() => {
+    if (typeof window === "undefined") return "preview-user";
+    const existing = localStorage.getItem("IZK_UID");
+    if (existing && existing.trim().length > 0) {
+      return existing.trim();
+    }
+    const fallback = "preview-user";
+    localStorage.setItem("IZK_UID", fallback);
+    return fallback;
+  });
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [walletError, setWalletError] = useState<string | null>(null);
+  const [showScenarioModal, setShowScenarioModal] = useState(false);
+  const [scenarioTitle, setScenarioTitle] = useState("");
+  const [generatingScenario, setGeneratingScenario] = useState(false);
+  const [scenarioError, setScenarioError] = useState<string | null>(null);
+  const SCENARIO_STORAGE_KEY = "IZK_THUMBNAIL_SCENARIOS";
+  const [scenarioHistory, setScenarioHistory] = useState<GeneratedScenario[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem(SCENARIO_STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .filter((entry) => entry && typeof entry === "object")
+          .map((entry, index) => {
+            const summary = typeof entry.summary === "string" ? entry.summary : "";
+            const prompt = typeof entry.prompt === "string" ? entry.prompt : summary;
+            const cardId = typeof entry.cardId === "string" ? entry.cardId : "";
+            const cardName = typeof entry.cardName === "string" ? entry.cardName : "";
+            const personaData =
+              entry.persona && typeof entry.persona === "object" ? (entry.persona as V2CardMetadata) : null;
+            return {
+              id:
+                typeof entry.id === "string"
+                  ? entry.id
+                  : `legacy-${index}-${Math.random().toString(36).slice(2, 8)}`,
+              title: typeof entry.title === "string" ? entry.title : "",
+              summary,
+              prompt,
+              cardId,
+              cardName,
+              persona: personaData,
+              createdAt:
+                typeof entry.createdAt === "string" ? entry.createdAt : new Date().toISOString(),
+            };
+          })
+          .filter((entry) => entry.summary.length > 0);
+      }
+    } catch {
+      // ignore parse failures
+    }
+    return [];
+  });
+  const latestScenario = scenarioHistory.length > 0 ? scenarioHistory[0] : null;
+  const [draftScenario, setDraftScenario] = useState<GeneratedScenario | null>(null);
+  const [scenarioSending, setScenarioSending] = useState(false);
+  const [scenarioToast, setScenarioToast] = useState<string | null>(null);
+  const [scenarioSendError, setScenarioSendError] = useState<string | null>(null);
+  const [scenarioEditorText, setScenarioEditorText] = useState("");
+  const [scenarioManualMode, setScenarioManualMode] = useState(false);
+  const isDevEnv = import.meta.env.DEV;
+  const isAdminEnvFlag =
+    typeof import.meta.env.VITE_ADMIN_MODE === "string"
+      ? import.meta.env.VITE_ADMIN_MODE === "true"
+      : false;
+  const showAdminHealthWarnings = isDevEnv || isAdminEnvFlag || adminMode;
 
   const listRef = useRef<HTMLDivElement>(null);
   const hiddenFileInputRef = useRef<HTMLInputElement>(null);
   const adminNoticeTimerRef = useRef<number | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const walletPollerRef = useRef<number | null>(null);
   const isMountedRef = useRef(true);
   const isConnectingRef = useRef(false);
 
@@ -871,19 +1335,92 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("IZK_UID", activeUserId);
+  }, [activeUserId]);
+
+  const fetchWalletBalance = useCallback(async () => {
+    const userId = activeUserId.trim();
+    if (!userId) {
+      return null;
+    }
+    setWalletLoading(true);
+    try {
+      const response = await fetch(buildRequestUrl("/wallet/balance"), {
+        method: "GET",
+        headers: {
+          "content-type": "application/json",
+          "X-IZK-UID": userId,
+        },
+      });
+      if (!response.ok) {
+        const message = await response.text().catch(() => "");
+        throw new Error(message || `HTTP ${response.status}`);
+      }
+      const payload = await response.json();
+      const balanceValue =
+        typeof payload.balance === "number" ? payload.balance : Number(payload?.remaining) || 0;
+      setWalletBalance(balanceValue);
+      setWalletError(null);
+      return balanceValue;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setWalletError(message);
+      return null;
+    } finally {
+      setWalletLoading(false);
+    }
+  }, [activeUserId]);
+
+  useEffect(() => {
+    if (!activeUserId) return;
+    void fetchWalletBalance();
+  }, [activeUserId, fetchWalletBalance]);
+
+  useEffect(() => {
     localStorage.setItem("IZAKAYA_THEME", theme);
   }, [theme]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const trimmed = scenarioHistory.slice(0, 20);
+      window.localStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(trimmed));
+    } catch {
+      // ignore storage errors
+    }
+  }, [SCENARIO_STORAGE_KEY, scenarioHistory]);
+
+  useEffect(() => {
+    if (!scenarioToast) return;
+    const timer = window.setTimeout(() => setScenarioToast(null), 4000);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [scenarioToast]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
   useEffect(() => {
+    if (showScenarioModal && draftScenario) {
+      setScenarioEditorText(draftScenario.summary);
+      setScenarioManualMode(false);
+    }
+  }, [draftScenario, showScenarioModal]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
       if (retryTimerRef.current) {
         clearTimeout(retryTimerRef.current);
         retryTimerRef.current = null;
+      }
+      if (walletPollerRef.current) {
+        window.clearInterval(walletPollerRef.current);
+        walletPollerRef.current = null;
       }
     };
   }, []);
@@ -949,6 +1486,7 @@ const App: React.FC = () => {
       id: card.id || slugify(card.name),
       avatar: card.avatar || preset?.avatar,
       kind,
+      metadata: card.metadata ?? preset?.metadata ?? null,
     };
   };
 
@@ -973,18 +1511,6 @@ const App: React.FC = () => {
     }
   }, [selectedCard]);
 
-  const probeHealth = useCallback(
-    async (base?: string) => {
-      try {
-        await fetchHealthStatus(base);
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    [fetchHealthStatus],
-  );
-
   const probeChatEndpoint = useCallback(
     async (base: string) => {
       const url = buildRequestUrl("/chat/v1", base);
@@ -1005,6 +1531,303 @@ const App: React.FC = () => {
       return { reply, data };
     },
     [recordHeartbeatResponse],
+  );
+
+  const fetchWithTimeout = useCallback(
+    async (input: RequestInfo, init: RequestInit & { timeoutMs?: number } = {}) => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), init.timeoutMs ?? 2000);
+      try {
+        const response = await fetch(input, { ...init, signal: controller.signal });
+        return response;
+      } finally {
+        clearTimeout(timeout);
+      }
+    },
+    [],
+  );
+
+  const runInitialChecks = useCallback(
+    async (base: string) => {
+      const normalizedBase = normalizeBase(base);
+
+      const healthUrl = buildRequestUrl("/health/ping", normalizedBase);
+      console.info("BFF_CONNECT_STEP", { step: "health/ping", url: healthUrl });
+      const healthResponse = await fetchWithTimeout(healthUrl, { cache: "no-store" });
+      if (!healthResponse.ok) {
+        const detail = `HTTP ${healthResponse.status}`;
+        console.error("BFF_CONNECT_STEP_FAILED", { step: "health/ping", url: healthUrl, detail });
+        throw new Error(`/health/ping failed: ${detail}`);
+      }
+      console.info("BFF_CONNECT_STEP_SUCCESS", {
+        step: "health/ping",
+        status: healthResponse.status,
+      });
+
+      const adminInfoUrl = buildRequestUrl("/admin/info", normalizedBase);
+      console.info("BFF_CONNECT_STEP", { step: "admin/info", url: adminInfoUrl });
+      const adminInfoResponse = await fetchWithTimeout(adminInfoUrl, { cache: "no-store" });
+      if (!adminInfoResponse.ok) {
+        const detail = `HTTP ${adminInfoResponse.status}`;
+        console.error("BFF_CONNECT_STEP_FAILED", { step: "admin/info", url: adminInfoUrl, detail });
+        throw new Error(`/admin/info failed: ${detail}`);
+      }
+      const adminInfoStatus = adminInfoResponse.status;
+      const adminInfo = await adminInfoResponse.json().catch(() => ({}));
+      console.info("BFF_CONNECT_STEP_SUCCESS", {
+        step: "admin/info",
+        status: adminInfoStatus,
+      });
+
+      console.info("BFF_CONNECT_STEP", { step: "chat/v1", url: buildRequestUrl("/chat/v1", normalizedBase) });
+      const chatResult = await probeChatEndpoint(normalizedBase);
+      console.info("BFF_CONNECT_STEP_SUCCESS", { step: "chat/v1", detail: `reply length=${chatResult.reply.length}` });
+
+      return { reply: chatResult.reply, adminInfo, adminInfoStatus };
+    },
+    [fetchWithTimeout, probeChatEndpoint],
+  );
+  const handleOpenScenarioModal = useCallback(() => {
+    setScenarioTitle("");
+    setScenarioError(null);
+    setScenarioSendError(null);
+    setDraftScenario(null);
+    setScenarioToast(null);
+    setScenarioEditorText("");
+    setScenarioManualMode(false);
+    setShowScenarioModal(true);
+  }, []);
+
+  const handleCloseScenarioModal = useCallback(() => {
+    if (generatingScenario || scenarioSending) return;
+    setShowScenarioModal(false);
+    setScenarioError(null);
+    setScenarioSendError(null);
+    setDraftScenario(null);
+    setScenarioTitle("");
+    setScenarioEditorText("");
+    setScenarioManualMode(false);
+  }, [generatingScenario, scenarioSending]);
+
+  const handleGenerateScenario = useCallback(async () => {
+    const title = scenarioTitle.trim() || "おまかせ";
+    const activeCard =
+      cards.find((card) => card.id === selectedCard) ||
+      FEATURED_CARDS.find((card) => card.id === selectedCard) ||
+      null;
+    const cardName = activeCard?.name ?? null;
+    const promptLines = [
+      "あなたは IZAKAYA verse のストーリープランナーです。",
+      "以下のタイトルをもとに、200〜400文字程度の短いシナリオ概要を日本語で作成してください。",
+      "アウトラインや箇条書きではなく、まとまった文章として書いてください。",
+      "可能であればタイトルに合う情景や課題、期待感を含めてください。",
+      title === "おまかせ"
+        ? "タイトルが未指定の場合は、魅力的な仮タイトルも併記してください。"
+        : `タイトル: 「${title}」`,
+    ];
+    if (cardName) {
+      promptLines.push(`関連カード: ${cardName}`);
+    }
+    const scenarioPrompt = promptLines.join("\n");
+
+    setGeneratingScenario(true);
+    setScenarioError(null);
+    setScenarioSendError(null);
+    setScenarioToast(null);
+    try {
+      const url = buildRequestUrl("/chat/v1", getResolvedBffBase());
+      const response = await fetchWithDebug(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          prompt: scenarioPrompt,
+          cardId: selectedCard || "thumbnail-title",
+          temperature: 0.2,
+          persona: activeCard?.metadata ?? scenario?.persona ?? null,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} ${response.rawBody || ""}`.trim());
+      }
+      const payload = asJsonObject<{ reply?: string }>(response.body) ?? {};
+      const summary = typeof payload.reply === "string" ? payload.reply.trim() : "";
+      if (!summary) {
+        throw new Error("空のシナリオが返されました。");
+      }
+      const entry: GeneratedScenario = {
+        id: `scenario-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+        title,
+        summary,
+        prompt: scenarioPrompt,
+        cardId: activeCard?.id ?? selectedCard,
+        cardName: activeCard?.name ?? title,
+        persona: activeCard?.metadata ?? null,
+        createdAt: new Date().toISOString(),
+      };
+      setScenarioHistory((prev) => [entry, ...prev].slice(0, 20));
+      setDraftScenario(entry);
+      setScenarioEditorText(summary);
+      setScenarioManualMode(false);
+      setScenarioTitle(title === "おまかせ" ? "" : title);
+      setScenarioError(null);
+      setScenarioToast("シナリオを生成しました。チャットに送信できます。");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setScenarioError(message);
+    } finally {
+      setGeneratingScenario(false);
+    }
+  }, [cards, fetchWithDebug, scenarioTitle, selectedCard]);
+
+  const handleManualScenario = useCallback(() => {
+    setShowScenarioModal(true);
+    setScenarioManualMode(true);
+    setDraftScenario(null);
+    setScenarioTitle("");
+    setScenarioEditorText("");
+    setScenarioError(null);
+    setScenarioSendError(null);
+    setScenarioToast("自由入力モードです。直接テキストを編集して送信できます。");
+  }, []);
+
+  const startEditingScenario = useCallback((scenario: GeneratedScenario) => {
+    setScenarioManualMode(false);
+    setDraftScenario(scenario);
+    setScenarioError(null);
+    setScenarioSendError(null);
+    setScenarioToast(null);
+    setScenarioTitle(scenario.title === "おまかせ" ? "" : scenario.title);
+    setScenarioEditorText(scenario.summary);
+    setShowScenarioModal(true);
+  }, []);
+
+  const sendScenarioToChat = useCallback(
+    async (scenario?: GeneratedScenario) => {
+      if (scenarioSending || sending) return;
+      if (connectionStatus.state !== "ok") {
+        setScenarioSendError("BFF未接続です。接続を確認してから再度お試しください。");
+        console.error("CHAT_REQUEST_FAILED", { reason: "scenario_send_without_connection" });
+        return;
+      }
+      const editorSummary = showScenarioModal ? scenarioEditorText.trim() : "";
+      const fallbackSummary = scenario?.summary?.trim() ?? "";
+      const finalSummary = editorSummary || fallbackSummary;
+      if (!finalSummary) {
+        setScenarioSendError("シナリオ本文が空です。");
+        return;
+      }
+      const finalTitle =
+        scenario?.title ??
+        (scenarioTitle.trim() ? scenarioTitle.trim() : editorSummary ? "おまかせ" : "おまかせ");
+      const tempValue = Math.min(1, Math.max(0, Number(temperature) || 0.7));
+      const activeCard =
+        cards.find((card) => card.id === selectedCard) ||
+        FEATURED_CARDS.find((card) => card.id === selectedCard) ||
+        null;
+      setScenarioSending(true);
+      setSending(true);
+      setScenarioSendError(null);
+      setScenarioToast(null);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "user",
+          text: finalSummary,
+          cardId: selectedCard,
+          cardName: activeCard?.name,
+        },
+      ]);
+      try {
+        const body = {
+          prompt: finalSummary,
+          text: finalSummary,
+          cardId: selectedCard,
+          temperature: tempValue,
+          persona: activeCard?.metadata ?? null,
+        };
+        const data = await apiFetch<{ reply: string; meta?: Record<string, string> }>("/chat/v1", {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+        const replyText = typeof data.reply === "string" ? data.reply.trim() : "";
+        if (!replyText) {
+          throw new Error("BFF応答エラー: 空の返信");
+        }
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "ai",
+            text: replyText,
+            cardId: selectedCard,
+            cardName: activeCard?.name,
+          },
+        ]);
+        setScenarioToast("チャットに送信しました。物語を開始します。");
+        setScenarioSendError(null);
+        void fetchWalletBalance();
+        const updatedEntry: GeneratedScenario = scenario
+          ? {
+              ...scenario,
+              title: finalTitle,
+              summary: finalSummary,
+              prompt: scenario.prompt ?? finalSummary,
+              cardId: activeCard?.id ?? selectedCard,
+              cardName: activeCard?.name ?? finalTitle,
+              persona: activeCard?.metadata ?? scenario.persona ?? null,
+            }
+          : {
+              id: `scenario-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+              title: finalTitle,
+              summary: finalSummary,
+              prompt: finalSummary,
+              cardId: activeCard?.id ?? selectedCard,
+              cardName: activeCard?.name ?? finalTitle,
+              persona: activeCard?.metadata ?? scenario?.persona ?? null,
+              createdAt: new Date().toISOString(),
+            };
+        setScenarioHistory((prev) => {
+          if (scenario) {
+            return prev.map((item) => (item.id === scenario.id ? updatedEntry : item)).slice(0, 20);
+          }
+          return [updatedEntry, ...prev].slice(0, 20);
+        });
+        setDraftScenario(null);
+        setScenarioEditorText("");
+        setScenarioManualMode(false);
+        setScenarioTitle("");
+        setShowScenarioModal(false);
+        setTimeout(() => {
+          listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+        }, 120);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setScenarioSendError(message);
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "ai",
+            text: `エラー: ${message}`,
+            cardId: selectedCard,
+            cardName: activeCard?.name,
+          },
+        ]);
+      } finally {
+        setScenarioSending(false);
+        setSending(false);
+      }
+    },
+    [
+      cards,
+      connectionStatus.state,
+      listRef,
+      scenarioEditorText,
+      scenarioSending,
+      scenarioTitle,
+      sending,
+      selectedCard,
+      showScenarioModal,
+      temperature,
+    ],
   );
 
   const performHealthChecks = useCallback(async (base: string, reply: string): Promise<EndpointCheck[]> => {
@@ -1153,21 +1976,21 @@ const App: React.FC = () => {
           return;
         }
         totalAttempts += 1;
-        setConnectionStatus({ state: "connecting", attempt: totalAttempts });
+        updateConnectionStatus({ state: "connecting", attempt: totalAttempts });
+        console.info("BFF_CONNECT_PROGRESS", { base, attempt, totalAttempts });
         try {
-          const healthOk = await probeHealth(base);
-          if (!healthOk) {
-            throw new Error("health check failed");
-          }
-
-          const { reply } = await probeChatEndpoint(base);
+          const { reply, adminInfo, adminInfoStatus } = await runInitialChecks(base);
           if (!isMountedRef.current) {
             isConnectingRef.current = false;
             return;
           }
           setResolvedBffBase(base);
-          setConnectionStatus({ state: "ok", url: base, reply });
-          recordHeartbeatResponse(base);
+          updateConnectionStatus({ state: "ok", url: base, reply });
+          recordHeartbeatResponse(base, {
+            endpoint: buildRequestUrl("/admin/info", base),
+            status: adminInfoStatus,
+            body: adminInfo,
+          });
           try {
             const status = await fetchHealthStatus(base);
             setHealth(status);
@@ -1189,7 +2012,9 @@ const App: React.FC = () => {
           );
           await refreshCards();
           await runHealthChecks(base, reply);
+          await fetchWalletBalance();
           isConnectingRef.current = false;
+          console.info("BFF_CONNECT_SUCCESS", { base, replyPreview: reply.slice(0, 48) });
           return;
         } catch (error) {
           const detail = error instanceof Error ? error.message : String(error);
@@ -1198,6 +2023,7 @@ const App: React.FC = () => {
             url: base,
             error,
           });
+          console.error("BFF_CONNECT_ATTEMPT_FAILED", { base, attempt, detail });
           lastError = detail;
           if (attempt < MAX_CONNECTION_ATTEMPTS) {
             await sleep(CONNECTION_RETRY_DELAY_MS);
@@ -1208,11 +2034,11 @@ const App: React.FC = () => {
     }
 
     if (isMountedRef.current) {
-      setConnectionStatus({ state: "error", attempt: totalAttempts, failures });
+      updateConnectionStatus({ state: "error", attempt: totalAttempts, failures });
       console.error("CHAT_REQUEST_FAILED", { reason: "bootstrap_failed", failures });
     }
     isConnectingRef.current = false;
-  }, [bffCandidates, fetchHealthStatus, probeChatEndpoint, probeHealth, recordHeartbeatResponse, refreshCards, runHealthChecks]);
+  }, [bffCandidates, fetchHealthStatus, fetchWalletBalance, recordHeartbeatResponse, refreshCards, runHealthChecks, runInitialChecks, updateConnectionStatus]);
 
   useEffect(() => {
     startConnection();
@@ -1236,6 +2062,29 @@ const App: React.FC = () => {
       }
     };
   }, [connectionStatus, startConnection]);
+  useEffect(() => {
+    if (connectionStatus.state !== "ok") {
+      if (walletPollerRef.current) {
+        window.clearInterval(walletPollerRef.current);
+        walletPollerRef.current = null;
+      }
+      return;
+    }
+    void fetchWalletBalance();
+    if (walletPollerRef.current) {
+      window.clearInterval(walletPollerRef.current);
+    }
+    walletPollerRef.current = window.setInterval(() => {
+      void fetchWalletBalance();
+    }, 10000);
+    return () => {
+      if (walletPollerRef.current) {
+        window.clearInterval(walletPollerRef.current);
+        walletPollerRef.current = null;
+      }
+    };
+  }, [connectionStatus.state, fetchWalletBalance]);
+
 
   const handleRetryHealthChecks = async () => {
     if (connectionStatus.state !== "ok") {
@@ -1262,6 +2111,55 @@ const App: React.FC = () => {
       adminNoticeTimerRef.current = null;
     }, 4000);
   }, []);
+
+  const handleRunWalletDiagnostic = useCallback(async () => {
+    const target = walletDiagnosticUserId.trim();
+    if (!target) {
+      setWalletDiagnosticError("診断対象ユーザーIDを入力してください");
+      return;
+    }
+    setWalletDiagnosticRunning(true);
+    setWalletDiagnosticError(null);
+    setWalletDiagnosticResult(null);
+    try {
+      const amount = Math.max(1, Math.round(walletDiagnosticAmount));
+      const response = await fetch(buildRequestUrl("/admin/wallet/diagnostic"), {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "X-IZK-UID": "admin",
+        },
+        body: JSON.stringify({
+          userId: target,
+          amount,
+          revert: walletDiagnosticRevert,
+        }),
+      });
+      if (!response.ok) {
+        const message = await response.text().catch(() => "");
+        throw new Error(message || `HTTP ${response.status}`);
+      }
+      const payload = (await response.json()) as WalletDiagnosticResult & { error?: string };
+      if (!payload || payload.ok !== true) {
+        throw new Error(payload?.error || "wallet_diagnostic_failed");
+      }
+      setWalletDiagnosticResult(payload);
+      setWalletDiagnosticError(null);
+      showAdminToast("ウォレット動作チェックが完了しました。");
+      await fetchWalletBalance();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setWalletDiagnosticError(message);
+    } finally {
+      setWalletDiagnosticRunning(false);
+    }
+  }, [
+    walletDiagnosticUserId,
+    walletDiagnosticAmount,
+    walletDiagnosticRevert,
+    fetchWalletBalance,
+    showAdminToast,
+  ]);
 
   const fetchProviderConfig = useCallback(async () => {
     try {
@@ -1293,12 +2191,20 @@ const App: React.FC = () => {
       return;
     }
     const tempValue = Math.min(1, Math.max(0, Number(temperature) || 0.7));
-    const selectedCardMeta = cards.find((card) => card.id === selectedCard);
+    const activeCard =
+      cards.find((card) => card.id === selectedCard) ||
+      FEATURED_CARDS.find((card) => card.id === selectedCard) ||
+      null;
     setInput("");
     addMessage({ role: "user", text: content });
     setSending(true);
     try {
-      const body = { prompt: content, cardId: selectedCard, temperature: tempValue };
+      const body = {
+        prompt: content,
+        cardId: selectedCard,
+        temperature: tempValue,
+        persona: activeCard?.metadata ?? null,
+      };
       const data = await apiFetch<{ reply: string; meta?: Record<string, string> }>("/chat/v1", {
         method: "POST",
         body: JSON.stringify(body),
@@ -1311,8 +2217,9 @@ const App: React.FC = () => {
         role: "ai",
         text: replyText,
         cardId: selectedCard,
-        cardName: selectedCardMeta?.name,
+        cardName: activeCard?.name,
       });
+      void fetchWalletBalance();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error("CHAT_REQUEST_FAILED", { reason: "send_failed", error: err });
@@ -1320,7 +2227,7 @@ const App: React.FC = () => {
         role: "ai",
         text: `エラー: ${message}`,
         cardId: selectedCard,
-        cardName: selectedCardMeta?.name,
+        cardName: activeCard?.name,
       });
       if (typeof window !== "undefined") {
         window.alert(`チャットの送信に失敗しました: ${message}`);
@@ -1339,23 +2246,51 @@ const App: React.FC = () => {
 
   const handleRegisterCard = () => hiddenFileInputRef.current?.click();
 
-  const handleFilesToCards = (files: FileList | null) => {
+  const handleFilesToCards = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     const file = Array.from(files).find((item) => item.type === "image/png");
     if (!file) return;
     const objectUrl = URL.createObjectURL(file);
-    const name = file.name.replace(/\.png$/i, "");
-    const newCard: CardRecord = {
-      id: `custom-${Date.now()}`,
-      name,
-      avatar: objectUrl,
-      kind: "custom",
-    };
-    setCards((prev) => [newCard, ...prev]);
-    setSelectedCard(newCard.id);
+    let metadata: V2CardMetadata | null = null;
+    try {
+      metadata = await extractV2CardMetadataFromPng(file);
+    } catch (error) {
+      console.warn("V2 metadata parse failed", error);
+    }
+    const rawName = typeof metadata?.name === "string" ? metadata.name.trim() : "";
+    const rawId = typeof metadata?.id === "string" ? metadata.id.trim() : "";
+    const baseName = rawName || file.name.replace(/\.png$/i, "");
+    let proposedId = rawId || `custom-${Date.now()}`;
+    let finalId = proposedId;
+    setCards((prev) => {
+      let uniqueId = finalId;
+      const seenIds = new Set(prev.map((card) => card.id));
+      while (seenIds.has(uniqueId)) {
+        uniqueId = `${proposedId}-${Math.random().toString(36).slice(2, 6)}`;
+      }
+      finalId = uniqueId;
+      const cardMetadata = metadata ? { ...metadata } : null;
+      if (cardMetadata) {
+        if (!cardMetadata.id) cardMetadata.id = uniqueId;
+        if (!cardMetadata.name) cardMetadata.name = baseName;
+      }
+      const newCard: CardRecord = {
+        id: uniqueId,
+        name: baseName,
+        avatar: objectUrl,
+        kind: "custom",
+        metadata: cardMetadata,
+      };
+      return [newCard, ...prev];
+    });
+    setSelectedCard(finalId);
   };
 
-  const selectedCardMeta = cards.find((card) => card.id === selectedCard) ?? cards[0];
+  const selectedCardMeta =
+    cards.find((card) => card.id === selectedCard) ??
+    FEATURED_CARDS.find((card) => card.id === selectedCard) ??
+    cards[0] ??
+    null;
 
   const handleRemoveCard = (id: string) => {
     setCards((prev) => {
@@ -1370,23 +2305,13 @@ const App: React.FC = () => {
 
   const handleShowBalance = async () => {
     alert("ポイント情報を取得しています…");
-    const uid = localStorage.getItem("IZK_UID") || "preview-ui";
-    try {
-      const response = await fetch(buildRequestUrl("/wallet/balance"), {
-        headers: {
-          "content-type": "application/json",
-          "X-IZK-UID": uid,
-        },
-      });
-      if (!response.ok) {
-        const message = await response.text();
-        throw new Error(message || `HTTP ${response.status}`);
-      }
-      const data = await response.json();
-      const balance = typeof data.balance === "number" ? data.balance : 0;
+    const balance = await fetchWalletBalance();
+    if (balance !== null) {
       alert(`残高: ${balance} pt`);
-    } catch (error) {
-      alert(`ポイント情報の取得に失敗しました: ${(error as Error).message}`);
+    } else if (walletError) {
+      alert(`ポイント情報の取得に失敗しました: ${walletError}`);
+    } else {
+      alert("ポイント情報の取得に失敗しました");
     }
   };
 
@@ -1411,12 +2336,15 @@ const App: React.FC = () => {
           throw new Error(message || `HTTP ${response.status}`);
         }
         localStorage.setItem(ADMIN_STORAGE_KEY, "true");
+        localStorage.setItem("IZK_UID", "admin");
+        setActiveUserId("admin");
         setAdminMode(true);
         setAdminError(null);
         setAdminNotice(null);
         setPasswordForm({ current: "", next: "", confirm: "" });
         setShowAdminPanel(true);
         showAdminToast("管理モードを有効化しました");
+        void fetchWalletBalance();
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         console.error("CHAT_REQUEST_FAILED", { reason: "admin_login_failed", error });
@@ -1561,7 +2489,8 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <div className={`min-h-screen ${themeClasses.page}`}>
+    <>
+      <div className={`min-h-screen ${themeClasses.page}`}>
       <header className={`sticky top-0 z-10 ${themeClasses.header} border-b border-white/40 backdrop-blur-xl`}>
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-5 py-4">
           <HeaderIcon />
@@ -1573,7 +2502,22 @@ const App: React.FC = () => {
           </div>
           <div className="ml-auto flex flex-wrap items-center gap-3 text-sm">
             <ConnectionStatusPill status={connectionStatus} />
-            <HealthCheckIndicator checks={endpointChecks} />
+            {walletBalance !== null ? (
+              <span className="text-xs font-medium text-rose-500 dark:text-rose-300">残り {walletBalance} pt</span>
+            ) : walletLoading ? (
+              <span className="text-xs text-zinc-400">残高更新中…</span>
+            ) : walletError && showAdminHealthWarnings ? (
+              <span className="text-xs text-amber-500">残高取得エラー</span>
+            ) : (
+              <span className="text-xs text-zinc-400">残高 -- pt</span>
+            )}
+            {showAdminHealthWarnings && walletHealthStatus === "ok" && (
+              <span className="text-xs text-emerald-500">🟢ポイント管理 正常</span>
+            )}
+            {showAdminHealthWarnings && walletHealthStatus === "error" && (
+              <span className="text-xs text-rose-500">⚠️ポイント管理 異常</span>
+            )}
+            {showAdminHealthWarnings && <HealthCheckIndicator checks={endpointChecks} />}
             <HealthBadge health={health} loading={loadingHealth} error={healthError} />
             {selectedCardMeta && <CardChip name={selectedCardMeta.name} selected themeClasses={themeClasses} />}
             <button
@@ -1637,6 +2581,16 @@ const App: React.FC = () => {
               onRetryHealthChecks={handleRetryHealthChecks}
               healthChecksRunning={healthChecksRunning}
               heartbeatDebug={heartbeatDebug}
+              walletDiagnosticResult={walletDiagnosticResult}
+              walletDiagnosticError={walletDiagnosticError}
+              walletDiagnosticRunning={walletDiagnosticRunning}
+              walletDiagnosticUserId={walletDiagnosticUserId}
+              walletDiagnosticAmount={walletDiagnosticAmount}
+              walletDiagnosticRevert={walletDiagnosticRevert}
+              onWalletDiagnosticUserIdChange={setWalletDiagnosticUserId}
+              onWalletDiagnosticAmountChange={setWalletDiagnosticAmount}
+              onWalletDiagnosticRevertChange={setWalletDiagnosticRevert}
+              onRunWalletDiagnostic={handleRunWalletDiagnostic}
             />
           </>
         )}
@@ -1705,6 +2659,7 @@ const App: React.FC = () => {
           selectedId={selectedCard}
           onSelect={setSelectedCard}
           onRegisterClick={handleRegisterCard}
+          onCreateScenario={handleOpenScenarioModal}
           onDropFiles={handleFilesToCards}
           onRemove={handleRemoveCard}
           themeClasses={themeClasses}
@@ -1718,9 +2673,161 @@ const App: React.FC = () => {
           onChange={(event) => handleFilesToCards(event.target.files)}
         />
 
+        <section className="rounded-2xl border border-zinc-200 bg-white/90 p-4 shadow-sm dark:border-zinc-700 dark:bg-[#12121b]">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm font-semibold text-zinc-700 dark:text-zinc-100">タイトル誘導型プロット</div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleOpenScenarioModal}
+                className="rounded-full border border-rose-200 px-3 py-1 text-xs font-medium text-rose-500 hover:border-rose-500 hover:text-rose-600"
+              >
+                ✦ 新規シナリオ
+              </button>
+              <button
+                onClick={handleManualScenario}
+                className="rounded-full border border-dashed border-rose-200 px-3 py-1 text-xs font-medium text-rose-400 hover:border-rose-400 hover:text-rose-500"
+              >
+                ✎ 手動入力
+              </button>
+            </div>
+          </div>
+          {latestScenario ? (
+            <div className="space-y-3">
+              <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                {new Date(latestScenario.createdAt).toLocaleString()}
+              </div>
+              <div className="text-lg font-semibold text-zinc-800 dark:text-zinc-100">
+                {latestScenario.title === "おまかせ" ? "おまかせ生成" : latestScenario.title}
+              </div>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">
+                {latestScenario.summary}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => sendScenarioToChat(latestScenario)}
+                  disabled={scenarioSending || sending}
+                  className="rounded-full bg-rose-500 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-rose-600 disabled:opacity-60"
+                >
+                  {scenarioSending || sending ? "送信中…" : "チャットに送る"}
+                </button>
+                <button
+                  onClick={() => startEditingScenario(latestScenario)}
+                  className="rounded-full border border-rose-200 px-3 py-1 text-xs font-medium text-rose-500 hover:border-rose-500 hover:text-rose-600"
+                >
+                  編集して送信
+                </button>
+              </div>
+              {scenarioSendError && !showScenarioModal && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:border-rose-500/40 dark:bg-rose-900/20 dark:text-rose-200">
+                  {scenarioSendError}
+                </div>
+              )}
+              {scenarioToast && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-600 dark:border-emerald-500/40 dark:bg-emerald-900/20 dark:text-emerald-200">
+                  {scenarioToast}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-zinc-500 dark:text-zinc-300">
+              タイトルを入力して短いシナリオ案を生成できます。まずは「新規シナリオ」を押してみてください。
+            </p>
+          )}
+        </section>
+
         <PayPalGrid />
       </main>
-    </div>
+      </div>
+
+      {showScenarioModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6 backdrop-blur">
+        <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#12121b]">
+          <h2 className="text-lg font-semibold text-zinc-800 dark:text-zinc-100">サムネタイトルから生成</h2>
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+            タイトルを入力すると、200〜400文字のシナリオ案を自動生成します。思いつかない場合は「おまかせ」と入力してください。
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+            <button
+              onClick={handleManualScenario}
+              disabled={generatingScenario || scenarioSending}
+              className="rounded-full border border-dashed border-rose-200 px-3 py-1 font-medium text-rose-400 hover:border-rose-400 hover:text-rose-500 disabled:opacity-60"
+            >
+              手動入力に切り替える
+            </button>
+          </div>
+          <label className="mt-4 block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            タイトル
+          </label>
+          <input
+            value={scenarioTitle}
+            onChange={(event) => setScenarioTitle(event.target.value)}
+            placeholder="例: 眠れない夜の相談室"
+            className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-200 dark:border-zinc-700 dark:bg-[#141425] dark:text-zinc-100 dark:focus:border-purple-500 dark:focus:ring-purple-500/40"
+            disabled={generatingScenario}
+          />
+          {scenarioError && (
+            <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:border-rose-500/40 dark:bg-rose-900/20 dark:text-rose-200">
+              {scenarioError}
+            </div>
+          )}
+          {(draftScenario || scenarioManualMode || scenarioEditorText.trim()) && (
+            <div className="mt-5 space-y-3 rounded-2xl border border-rose-100 bg-white px-4 py-3 text-sm text-zinc-700 dark:border-rose-400/30 dark:bg-[#19192a] dark:text-zinc-200">
+              <div className="text-xs font-semibold uppercase tracking-wide text-rose-500">
+                生成されたシナリオ
+              </div>
+              <div className="text-base font-semibold text-zinc-800 dark:text-zinc-100">
+                {draftScenario
+                  ? draftScenario.title === "おまかせ"
+                    ? "おまかせ生成"
+                    : draftScenario.title
+                  : scenarioTitle.trim()
+                  ? scenarioTitle.trim()
+                  : "おまかせ入力"}
+              </div>
+              <textarea
+                value={scenarioEditorText}
+                onChange={(event) => setScenarioEditorText(event.target.value)}
+                rows={8}
+                className="w-full resize-y rounded-2xl border border-rose-200 bg-white px-3 py-2 text-sm leading-relaxed focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-200 dark:border-rose-500/40 dark:bg-[#141425] dark:text-zinc-100 dark:focus:border-purple-500 dark:focus:ring-purple-500/40"
+                placeholder="ここにシナリオ本文を入力・編集できます。"
+                disabled={scenarioSending || sending}
+              />
+              {scenarioSendError && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:border-rose-500/40 dark:bg-rose-900/20 dark:text-rose-200">
+                  {scenarioSendError}
+                </div>
+              )}
+              <div className="flex justify-end">
+                <button
+                  onClick={() => sendScenarioToChat(draftScenario ?? undefined)}
+                  disabled={scenarioSending || sending}
+                  className="rounded-full bg-rose-500 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-rose-600 disabled:opacity-60"
+                >
+                  {scenarioSending || sending ? "送信中…" : "チャットに送る"}
+                </button>
+              </div>
+            </div>
+          )}
+          <div className="mt-5 flex justify-end gap-2 text-sm">
+            <button
+              onClick={handleCloseScenarioModal}
+              disabled={generatingScenario || scenarioSending}
+              className="rounded-full border border-zinc-300 px-4 py-2 font-medium text-zinc-600 hover:border-zinc-400 hover:text-zinc-700 disabled:opacity-60 dark:border-zinc-600 dark:text-zinc-300 dark:hover:border-zinc-500 dark:hover:text-zinc-100"
+            >
+              キャンセル
+            </button>
+            <button
+              onClick={handleGenerateScenario}
+              disabled={generatingScenario}
+              className="rounded-full bg-rose-500 px-4 py-2 font-semibold text-white shadow hover:bg-rose-600 disabled:opacity-60"
+            >
+              {generatingScenario ? "生成中…" : "生成する"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 };
 

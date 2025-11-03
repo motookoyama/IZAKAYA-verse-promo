@@ -1,0 +1,5 @@
+{
+  "name": "Silly Checker",
+  "description": "A satellite checker app to automatically detect common development mistakes, misconfigurations, and dependency issues, saving developers from repetitive troubleshooting.",
+  "requestFramePermissions": []
+}
