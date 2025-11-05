@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "users": {
+    "admin": {
+      "balance": 10000,
+      "resetAt": "2025-11-05",
+      "transactions": {},
+      "lastGrantAt": "2025-11-05"
+    },
+    "guest-t5iw21": {
+      "balance": 100,
+      "resetAt": "2025-11-05",
+      "transactions": {},
+      "lastGrantAt": "2025-11-05"
+    },
+    "IZK_HEALTHCHECK_UI": {
+      "balance": 100,
+      "resetAt": "2025-11-05",
+      "transactions": {
+        "TX-20251103-KY82VI": "2025-11-03T17:18:29.587Z",
+        "health-mhjem11y-uptc": "2025-11-03T17:18:29.592Z",
+        "TX-20251103-0O2UNL": "2025-11-03T17:23:07.556Z",
+        "health-mhjerzjc-3715": "2025-11-03T17:23:07.561Z"
+      },
+      "lastGrantAt": "2025-11-05"
+    },
+    "preview-ui": {
+      "balance": 100,
+      "resetAt": "2025-11-05",
+      "transactions": {
+        "DIAG-20251103-FVWVQQ": "2025-11-03T17:28:27.657Z",
+        "diag-DIAG-20251103-FVWVQQ": "2025-11-03T17:28:27.658Z"
+      },
+      "lastGrantAt": "2025-11-05"
+    }
+  }
+}
