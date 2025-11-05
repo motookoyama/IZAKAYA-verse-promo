@@ -1,58 +1,40 @@
-name: pages build and deployment
-
-env:
-  FRONTEND_DIR: apps/frontend/preview-ui/mini-bff-express/preview-ui
-  OUTPUT_DIR: docs
+name: Build and Deploy to GitHub Pages
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Use Node
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: ${{ env.FRONTEND_DIR }}/package-lock.json
+          node-version: 18
 
-      - name: Install dependencies
-        working-directory: ${{ env.FRONTEND_DIR }}
+      - name: Install deps
         run: npm ci
 
-      - name: Build preview UI
-        working-directory: ${{ env.FRONTEND_DIR }}
-        run: |
-          npm run build
-          touch ${{ env.OUTPUT_DIR }}/.nojekyll
+      - name: Build
+        run: npm run build
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Upload docs artifact
+        uses: actions/upload-pages-artifact@v2
         with:
-          path: ${{ env.FRONTEND_DIR }}/${{ env.OUTPUT_DIR }}
+          path: docs/
 
   deploy:
     needs: build
+    permissions:
+      pages: write
+      id-token: write
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Deploy Pages
+        uses: actions/deploy-pages@v2
