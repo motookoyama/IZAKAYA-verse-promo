@@ -3,19 +3,19 @@
   "users": {
     "admin": {
       "balance": 10000,
-      "resetAt": "2025-11-05",
+      "resetAt": "2025-11-06",
       "transactions": {},
-      "lastGrantAt": "2025-11-05"
+      "lastGrantAt": "2025-11-06"
     },
     "guest-t5iw21": {
       "balance": 100,
-      "resetAt": "2025-11-05",
+      "resetAt": "2025-11-06",
       "transactions": {},
-      "lastGrantAt": "2025-11-05"
+      "lastGrantAt": "2025-11-06"
     },
     "IZK_HEALTHCHECK_UI": {
       "balance": 100,
-      "resetAt": "2025-11-05",
+      "resetAt": "2025-11-06",
       "transactions": {
         "TX-20251103-KY82VI": "2025-11-03T17:18:29.587Z",
         "health-mhjem11y-uptc": "2025-11-03T17:18:29.592Z",
@@ -42,22 +42,22 @@
         "TX-20251105-2GTJSK": "2025-11-05T22:22:38.569Z",
         "health-mhmkcve4-uor9": "2025-11-05T22:22:38.573Z"
       },
-      "lastGrantAt": "2025-11-05T22:22:38.569Z"
+      "lastGrantAt": "2025-11-06"
     },
     "preview-ui": {
       "balance": 100,
-      "resetAt": "2025-11-05",
+      "resetAt": "2025-11-06",
       "transactions": {
         "DIAG-20251103-FVWVQQ": "2025-11-03T17:28:27.657Z",
         "diag-DIAG-20251103-FVWVQQ": "2025-11-03T17:28:27.658Z"
       },
-      "lastGrantAt": "2025-11-05"
+      "lastGrantAt": "2025-11-06"
     },
     "preview-user": {
       "balance": 100,
-      "resetAt": "2025-11-05",
+      "resetAt": "2025-11-06",
       "transactions": {},
-      "lastGrantAt": "2025-11-05"
+      "lastGrantAt": "2025-11-06"
     }
   }
 }

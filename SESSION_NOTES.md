@@ -80,3 +80,30 @@
 - **次やること:**
     - ユーザー様が休憩後、Webスタイルキットの復元と適用、そしてバックエンドを含めたシステム全体の実働テストを進める予定。
     - 必要に応じて、WebスタイルキットのファイルをVS Codeワークスペース内の一時フォルダーにコピーしていただく。
+
+---
+
+## 2025-11-05 再生計画メモ（IZAKAYA Lite & Verse1.4）
+
+- **現行プレビュー環境**
+    - `IZAKAYA-LITE-UI`：ウォレット消費ロジックを実装済み。チャット送信成功時に `/wallet/consume` を呼び、ユーザーは1回10pt（カード別設定）を減算。`admin` は課金対象外。
+    - GitHub Pages は `docs/` を公開し、Vite `base: '/'` で Cloud Run/Nginx も同一構成に。
+    - Dockerfile は `/app/docs` を nginx にコピー。Cloud Run にデプロイ済みの BFF（Mini-BFF）と接続。
+
+- **日次リセット仕様**
+    - 一般ユーザー：毎日 100pt（デフォルト10レス相当）に自動リセット。
+    - 管理者 `admin`：毎日 10,000pt。
+
+- **資産バックアップ**
+    - `izakaya-verse/IZAKAYA verse1.4/web` にフロントエンドのレイアウト一式（Home, Play, Library など）とビルド成果物が残存。
+    - 今後 1.4 UI を復活させる際は、このフォルダを Vite プロジェクトとして `npm install` → `npm run dev` で再利用可能。Mini-BFF と API パスが合えば即接続できる。
+
+- **復帰時の着手順**
+    1. `IZAKAYA-LITE-UI` の `npm run build` → GitHub Pages / Cloud Run を確認（白画面対策済み）。
+    2. 利用状況ログ（ポイント消費・課金導線）を監視し、反応に応じて価格や無料枠を調整。
+    3. 1.4 UI を再構築する場合は `web/` ディレクトリからモジュール・コンポーネントを移植し、Mini-BFF の API エンドポイントを合わせる。
+
+- **TODO（次フェーズ）**
+    - 画像生成など他 SKU の消費トリガー追加。
+    - 残ポイントが不足した際の UI フロー（課金導線）整備。
+    - 必要なら `docs` を Cloud Run と GitHub Pages で共通利用する GitHub Actions を導入（`/.github/workflows/pages.yml` にひな形を保存済み）。
