@@ -3,19 +3,19 @@
   "users": {
     "admin": {
       "balance": 10000,
-      "resetAt": "2025-11-06",
+      "resetAt": "2025-11-07",
       "transactions": {},
-      "lastGrantAt": "2025-11-06"
+      "lastGrantAt": "2025-11-07"
     },
     "guest-t5iw21": {
       "balance": 100,
-      "resetAt": "2025-11-06",
+      "resetAt": "2025-11-07",
       "transactions": {},
-      "lastGrantAt": "2025-11-06"
+      "lastGrantAt": "2025-11-07"
     },
     "IZK_HEALTHCHECK_UI": {
       "balance": 100,
-      "resetAt": "2025-11-06",
+      "resetAt": "2025-11-07",
       "transactions": {
         "TX-20251103-KY82VI": "2025-11-03T17:18:29.587Z",
         "health-mhjem11y-uptc": "2025-11-03T17:18:29.592Z",
@@ -48,24 +48,30 @@
         "TX-20251106-LDEQK5": "2025-11-06T19:24:46.691Z",
         "health-mhntfzl2-a2cs": "2025-11-06T19:24:46.696Z",
         "TX-20251106-NROBNR": "2025-11-06T19:29:25.638Z",
-        "health-mhntlytl-mc1o": "2025-11-06T19:29:25.642Z"
+        "health-mhntlytl-mc1o": "2025-11-06T19:29:25.642Z",
+        "TX-20251106-916TYY": "2025-11-06T20:52:03.772Z",
+        "health-mhnwk8jk-nvol": "2025-11-06T20:52:03.778Z",
+        "TX-20251106-1YBXS7": "2025-11-06T20:52:55.394Z",
+        "health-mhnwlcdf-1tre": "2025-11-06T20:52:55.396Z",
+        "TX-20251107-2697XN": "2025-11-07T08:41:55.869Z",
+        "health-mholx4te-400u": "2025-11-07T08:41:55.876Z"
       },
-      "lastGrantAt": "2025-11-06T19:29:25.638Z"
+      "lastGrantAt": "2025-11-07T08:41:55.870Z"
     },
     "preview-ui": {
       "balance": 100,
-      "resetAt": "2025-11-06",
+      "resetAt": "2025-11-07",
       "transactions": {
         "DIAG-20251103-FVWVQQ": "2025-11-03T17:28:27.657Z",
         "diag-DIAG-20251103-FVWVQQ": "2025-11-03T17:28:27.658Z"
       },
-      "lastGrantAt": "2025-11-06"
+      "lastGrantAt": "2025-11-07"
     },
     "preview-user": {
       "balance": 100,
-      "resetAt": "2025-11-06",
+      "resetAt": "2025-11-07",
       "transactions": {},
-      "lastGrantAt": "2025-11-06"
+      "lastGrantAt": "2025-11-07"
     }
   }
 }

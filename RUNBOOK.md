@@ -87,3 +87,15 @@ chmod +x scripts/docker_reset.sh   # 初回のみ
 ## 変更メモの場所
 - 日々の記録: `SESSION_NOTES.md`
 - 引き継ぎ用テンプレ: `docs/HANDOVER_TEMPLATE.md`
+
+## 本番配信チェック（2025-11 緊急事案を踏まえた必須工程）
+2025-11 に、`docs/`（Vite 本番ビルド成果物）が再生成されないまま Cloud Run / GitHub Pages へ反映され、公開 UI が **完全な白画面** になる重大障害が発生した。  
+ローカル開発 (`npm run dev`) では正常でも、オンライン配信物が更新されなければユーザーにコンテンツが提供されない。この事象を二度と起こさないため、以下をリリース工程に必ず組み込む。
+
+1. `.env.production` を最新値に揃える（BFF URL 等を必ず確認）。
+2. `npm run build` を実行し、`docs/` に生成物が書き出されたことを確認（タイムスタンプ／git diff でチェック）。
+3. `git status` で `docs/` と `.env.production` の差分を確認し、忘れずにコミット＆プッシュ。
+4. Cloud Run / GitHub Pages へ反映後、**公開 URL で実際に画面が表示されるか**をブラウザで確認。
+5. `scripts/check_prod_build.sh` などの自動チェックが警告を出した場合は、ビルドからやり直して解消するまでデプロイ禁止。
+
+> ⚠️ 「ローカルでは見えた」だけでは不十分。`docs/` が最新であることを証明しない限りリリース完了とみなさない。
