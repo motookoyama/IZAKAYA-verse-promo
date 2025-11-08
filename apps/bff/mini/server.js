@@ -44,6 +44,19 @@ const PUBLIC_BFF_URL = (
   SELF_ORIGIN
 ).replace(/\/+$/, "");
 const PUBLIC_UI_URL = (process.env.PUBLIC_UI_URL || UI_URL).replace(/\/+$/, "");
+const STARTED_AT = new Date();
+
+console.log(
+  `[BOOT] mini-bff starting | build=${BUILD_ID} | port=${PORT} | self=${SELF_ORIGIN} | public=${PUBLIC_BFF_URL} | ui=${PUBLIC_UI_URL}`,
+);
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[FATAL] Unhandled promise rejection", reason);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("[FATAL] Uncaught exception", error);
+});
 
 function routeExists(pathname, method = "get") {
   const stack = app._router?.stack ?? [];
@@ -898,75 +911,106 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.get("/health/ping", (_req, res) => {
+  res.status(200).json({
+    ok: true,
+    service: "mini-bff",
+    build_id: BUILD_ID,
+    build_timestamp: BUILD_TIMESTAMP,
+    uptime_ms: Date.now() - STARTED_AT.getTime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get("/health/deep", async (_req, res) => {
   try {
-    const telemetry = getProviderTelemetry();
-    res.status(200).json({
-      ok: true,
+    const wallet = await performWalletProbe();
+    const chat = await performChatProbe();
+    const errors = [];
+    if (!wallet.ok) {
+      errors.push({ probe: "wallet", detail: wallet.error ?? wallet.status ?? "unknown" });
+    }
+    if (!chat.ok) {
+      errors.push({ probe: "chat", detail: chat.error ?? chat.status ?? "unknown" });
+    }
+    const ok = errors.length === 0;
+    res.status(ok ? 200 : 503).json({
+      ok,
       service: "mini-bff",
-      provider: telemetry.provider,
-      model: telemetry.model,
-      endpoint: telemetry.endpoint,
       build_id: BUILD_ID,
-      build_timestamp: BUILD_TIMESTAMP,
-      public_bff_url: PUBLIC_BFF_URL,
-      public_ui_url: PUBLIC_UI_URL,
       timestamp: new Date().toISOString(),
+      probes: { wallet, chat },
+      errors,
     });
   } catch (error) {
+    console.error("[HEALTH] deep probe failure", error);
     res.status(500).json({
       ok: false,
       error: error instanceof Error ? error.message : String(error),
+      service: "mini-bff",
       build_id: BUILD_ID,
       timestamp: new Date().toISOString(),
     });
   }
 });
 
-app.get("/health/deep", async (_req, res) => {
-  const wallet = await performWalletProbe();
-  const chat = await performChatProbe();
-  const ok = wallet.ok && chat.ok;
-  res.status(ok ? 200 : 503).json({
-    ok,
-    service: "mini-bff",
-    build_id: BUILD_ID,
-    probes: {
-      wallet,
-      chat,
-    },
-    timestamp: new Date().toISOString(),
-  });
-});
-
 app.get("/status/probe", async (_req, res) => {
-  const [frontend, wallet, chat] = await Promise.all([
-    performFrontendProbe(),
-    performWalletProbe(),
-    performChatProbe(),
-  ]);
-  const frontendBuildId =
-    frontend?.version && typeof frontend.version === "object"
-      ? frontend.version.build_id ?? frontend.version.buildId ?? null
-      : null;
-  const versionMismatch =
-    Boolean(frontendBuildId) && Boolean(BUILD_ID) && frontendBuildId !== BUILD_ID;
-  const playable = wallet.ok && chat.ok && frontend.ok && !versionMismatch;
-  res.status(playable ? 200 : 503).json({
-    playable,
-    service: "mini-bff",
-    build_id: BUILD_ID,
-    timestamp: new Date().toISOString(),
-    probes: {
-      frontend,
-      wallet,
-      chat,
-    },
-    version: {
-      frontend: frontend.version ?? null,
-      backend: { build_id: BUILD_ID, built_at: BUILD_TIMESTAMP },
-      mismatch: versionMismatch,
-    },
-  });
+  try {
+    const [frontend, wallet, chat] = await Promise.all([
+      performFrontendProbe(),
+      performWalletProbe(),
+      performChatProbe(),
+    ]);
+    const frontendBuildId =
+      frontend?.version && typeof frontend.version === "object"
+        ? frontend.version.build_id ?? frontend.version.buildId ?? null
+        : null;
+    const versionMismatch =
+      Boolean(frontendBuildId) && Boolean(BUILD_ID) && frontendBuildId !== BUILD_ID;
+
+    const errors = [];
+    if (!frontend.ok) {
+      errors.push({ probe: "frontend", detail: frontend.error ?? frontend.status ?? "unknown" });
+    }
+    if (!wallet.ok) {
+      errors.push({ probe: "wallet", detail: wallet.error ?? wallet.status ?? "unknown" });
+    }
+    if (!chat.ok) {
+      errors.push({ probe: "chat", detail: chat.error ?? chat.status ?? "unknown" });
+    }
+    if (versionMismatch) {
+      errors.push({
+        probe: "version",
+        detail: `frontend=${frontendBuildId ?? "unknown"} backend=${BUILD_ID}`,
+      });
+    }
+    const playable = errors.length === 0;
+    res.status(playable ? 200 : 503).json({
+      playable,
+      service: "mini-bff",
+      build_id: BUILD_ID,
+      timestamp: new Date().toISOString(),
+      probes: {
+        frontend,
+        wallet,
+        chat,
+      },
+      version: {
+        frontend: frontend.version ?? null,
+        backend: { build_id: BUILD_ID, built_at: BUILD_TIMESTAMP },
+        mismatch: versionMismatch,
+      },
+      errors,
+    });
+  } catch (error) {
+    console.error("[HEALTH] status probe failure", error);
+    res.status(500).json({
+      playable: false,
+      service: "mini-bff",
+      build_id: BUILD_ID,
+      error: error instanceof Error ? error.message : String(error),
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
 app.get("/api/personas", async (_req, res) => {
@@ -1595,6 +1639,20 @@ app.post("/chat/v1", async (req, res) => {
     const messageText = error instanceof Error ? error.message : String(error);
     res.status(500).json({ error: messageText });
   }
+});
+
+app.use((err, req, res, next) => {
+  console.error(`[ERROR] ${req.method} ${req.originalUrl}`, err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  const status = err?.status || err?.statusCode || 500;
+  res.status(status).json({
+    ok: false,
+    error: err instanceof Error ? err.message : String(err),
+    requestId: req.headers["x-request-id"] ?? null,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 loadProviderConfig()
