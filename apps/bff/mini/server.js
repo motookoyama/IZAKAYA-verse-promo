@@ -50,6 +50,10 @@ console.log(
   `[BOOT] mini-bff starting | build=${BUILD_ID} | port=${PORT} | self=${SELF_ORIGIN} | public=${PUBLIC_BFF_URL} | ui=${PUBLIC_UI_URL}`,
 );
 
+function isTestUserRequest(req) {
+  return req?.get?.("x-izk-test-user") === "1";
+}
+
 process.on("unhandledRejection", (reason) => {
   console.error("[FATAL] Unhandled promise rejection", reason);
 });
@@ -1074,6 +1078,7 @@ app.get("/wallet/balance", async (req, res) => {
 app.post("/wallet/redeem", async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
+  const isTestUser = isTestUserRequest(req);
 
   const { amount_pt, amount, tx_id, transactionId } = req.body ?? {};
   const candidateAmount = Number.isInteger(amount_pt) ? amount_pt : amount;
@@ -1087,6 +1092,17 @@ app.post("/wallet/redeem", async (req, res) => {
       ? transactionId
       : null;
   try {
+    if (isTestUser) {
+      const { record } = await getWalletForUser(userId);
+      return res.status(202).json({
+        ok: true,
+        userId,
+        balance: record.balance,
+        unit: "pt",
+        test_user: true,
+        note: "redeem_bypassed_for_test_user",
+      });
+    }
     const balance = await grantPointsToUser(userId, candidateAmount, txIdValue || undefined, "redeem");
     res.status(201).json({
       userId,
@@ -1133,6 +1149,7 @@ app.post("/wallet/grant", async (req, res) => {
 app.post("/wallet/consume", async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
+  const isTestUser = isTestUserRequest(req);
 
   const { amount_pt, amount, sku, idempotency_key, idempotencyKey } = req.body ?? {};
   const candidateAmount = Number.isInteger(amount_pt) ? amount_pt : amount;
@@ -1146,6 +1163,17 @@ app.post("/wallet/consume", async (req, res) => {
       ? idempotencyKey
       : null;
   try {
+    if (isTestUser) {
+      const { record } = await getWalletForUser(userId);
+      return res.status(200).json({
+        ok: true,
+        balance: record.balance,
+        userId,
+        unit: "pt",
+        test_user: true,
+        note: "consume_bypassed_for_test_user",
+      });
+    }
     const balance = await consumePointsFromUser(userId, candidateAmount, { sku, idempotencyKey: idempotency });
     res.status(200).json({
       ok: true,
