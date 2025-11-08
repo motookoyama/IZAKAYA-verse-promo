@@ -8,6 +8,24 @@
 - ログ/スクショの場所:
 - 次やること:
 
+## 2025-11-05 Online Build Failure Postmortem（全AI周知）
+- やったこと: 公開用 Vite ビルド (`docs/`) が再生成されないまま Cloud Run / GitHub Pages にアップされ、ユーザーには白画面しか提供されていなかった。原因は `.env.production` を更新しただけで本番ビルド工程を実行せず、成果物が古いままだったため。`RUNBOOK.md` に必須手順を追記し、`scripts/check_prod_build.sh` を作成して `docs/` と `.env.production` の更新・コミット有無を自動検証する仕組みを追加。
+- 気づき/問題: 「ローカルで見えたからOK」という判断でオンライン資産の更新確認を怠った。Codex/Gemini 等リモート AI からはブラウザ表示を直接確認できないため、ビルド成果物の整合性をチェックリストに含めていなかったことが致命傷になった。
+- ログ/スクショの場所: `logs/frontend.*.log` は正常。異常は `docs/` の更新日時が古いことと、ユーザー側ブラウザの白画面。詳細は RUNBOOK の新章「本番配信チェック（2025-11 緊急事案）」を参照。
+- 次やること: すべての AI/人間担当は `npm run build` と `scripts/check_prod_build.sh` の実行ログを確認・添付するまで「リリース完了」と報告してはならない。CI/CD に組み込むまでは、コミット前フックや手動チェックでこのスクリプトを必ず通すこと。
+
+## 2025-11-06 Online Playability Guardrails
+- やったこと: `/health/deep` と `/status/probe` を BFF (`apps/bff/mini`) に追加。`status/probe` は Frontend 到達性・wallet API・chat API・build_id 一致をまとめて JSON 返却。`scripts/check_playability.sh` をルートに配置し、FE/BFF/CORS/chat/ビルドIDを一発検査できるようにした。フロントエンドは `scripts/generate_version.mjs` により `public/version.json` を常時生成し、Cloud Run / GitHub Pages へビルドIDを配信する。
+- 気づき/問題: 影響把握を BFF/FE/ネットワーク全体で共有できる仕組みがなかったため、UI白画面や CORS 失敗が起きても検知が遅延していた。今後は `/status/probe` の結果と `check_playability.sh` のログを提出しない限り「オンライン公開OK」と判断しない。
+- ログ/スクショ: `logs/bff.*.log` に health probe の結果が出力される（失敗時）。CI/cron で `scripts/check_playability.sh` を 5 分間隔で実行し、Slack/メールへ通知する運用を推奨。
+- 次やること: Cloud Run 環境変数に `PUBLIC_UI_URL` と `PUBLIC_BFF_URL` を必ず設定し、`status/probe` が本番 URL を監視できるようにする。CI/CD へ `scripts/check_prod_build.sh && scripts/check_playability.sh` を必須ステップとして組み込む。
+
+## 2025-11-06 IZAKAYA マネージャー制度宣言
+- やったこと: `docs/IZAKAYA_MANAGER_PROTOCOL.md` を追加し、Vertex AI 常駐の「IZAKAYAマネージャー」が開発AI・企画AIを束ねて総合点検を実施するプロセスを正式化。RUNBOOK に項目を追記し、オンライン公開後の最終責任と報告ルートを明示。
+- 気づき/問題: 誰が点検提案を出し、顧客苦情に対して誰が一次回答するかが曖昧だった。マネージャー制度と点検レポートテンプレを定義することで責任の境界と行動手順を固定化。
+- ログ/スクショ: Vertex AI 宣言ログ（セッション記録に添付予定）。自動チェックログは `scripts/check_prod_build.sh` と `scripts/check_playability.sh` の結果を継続収集。
+- 次やること: ① Vertex AI セッション開始時に当プロトコルを読み上げるスクリプトを追加、② Cloud Run の監視通知先をマネージャー体制に合わせて更新。
+
 ## 2025-10-29 ENV初期化恒久ルール
 - やったこと: Mini BFF (`apps/bff/mini/server.js`) 起動時ログを追加し、`.env` が全く読み込まれていない事実を確認。原因は `dotenv.config()` が存在しない設計抜けであり、人的操作ミスではないと確定。
 - 気づき/問題: `process.env.PROVIDER` などを参照するコードが dotenv 初期化より前に書かれていたため、BFF が常に `PROVIDER is not set` 状態になっていた。リポジトリ全体を検索したところ `dotenv` を初期化している箇所はゼロ。

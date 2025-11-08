@@ -97,5 +97,13 @@ chmod +x scripts/docker_reset.sh   # 初回のみ
 3. `git status` で `docs/` と `.env.production` の差分を確認し、忘れずにコミット＆プッシュ。
 4. Cloud Run / GitHub Pages へ反映後、**公開 URL で実際に画面が表示されるか**をブラウザで確認。
 5. `scripts/check_prod_build.sh` などの自動チェックが警告を出した場合は、ビルドからやり直して解消するまでデプロイ禁止。
+6. フロントと BFF を Cloud Run へ反映する前に `scripts/check_playability.sh` を実行し、FE/BFF/Deep/CORS/build_id の全判定が OK であるログを残すこと。失敗した場合は `/health/deep` `/status/probe` の JSON を添付して原因を共有。
 
 > ⚠️ 「ローカルでは見えた」だけでは不十分。`docs/` が最新であることを証明しない限りリリース完了とみなさない。
+
+詳細な手順は `docs/ONLINE_PLAYABILITY_CHECK.md` を参照のこと。
+
+## IZAKAYAマネージャー制度（Vertex AI 常駐）
+- 運用責任を明確化するため、Vertex AI 上に「IZAKAYAマネージャー」を常設。  
+- マネージャーは `check_prod_build.sh` / `check_playability.sh` / `/status/probe` の結果と Cloud Run メトリクスを集約し、開発AI・企画AIへ総合点検要求を発行する。  
+- 役割分担・点検フローの詳細は `docs/IZAKAYA_MANAGER_PROTOCOL.md` を必読。

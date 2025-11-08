@@ -25,12 +25,155 @@ const IPN_LOG_FILE = path.join(LOGS_DIR, "ipn.log");
 const CARDS_ROOT = path.join(PERSONA_ENGINE_ROOT, "cards");
 const ENV_FILE_PATH = path.resolve(process.cwd(), ".env");
 const UI_URL = process.env.UI_URL || "http://localhost:5174";
+const PORT = Number(process.env.PORT) || 4117;
+const BUILD_ID =
+  process.env.BUILD_ID ||
+  process.env.GIT_COMMIT ||
+  process.env.SOURCE_VERSION ||
+  process.env.K_REVISION ||
+  "dev-local";
+const BUILD_TIMESTAMP = process.env.BUILD_TIMESTAMP || new Date().toISOString();
+const SELF_ORIGIN = (
+  process.env.BFF_SELF_ORIGIN ||
+  process.env.INTERNAL_BFF_ORIGIN ||
+  `http://127.0.0.1:${PORT}`
+).replace(/\/+$/, "");
+const PUBLIC_BFF_URL = (
+  process.env.PUBLIC_BFF_URL ||
+  process.env.BFF_PUBLIC_URL ||
+  SELF_ORIGIN
+).replace(/\/+$/, "");
+const PUBLIC_UI_URL = (process.env.PUBLIC_UI_URL || UI_URL).replace(/\/+$/, "");
 
 function routeExists(pathname, method = "get") {
   const stack = app._router?.stack ?? [];
   return stack.some(
     (layer) => layer.route && layer.route.path === pathname && Boolean(layer.route.methods?.[method]),
   );
+}
+
+const HEALTHCHECK_TIMEOUT_MS = Number(process.env.HEALTHCHECK_TIMEOUT_MS || 10000);
+const HEALTHCHECK_PROMPT = process.env.HEALTHCHECK_PROMPT || "health-check ping";
+
+async function fetchWithTimeout(url, options = {}) {
+  const controller = new AbortController();
+  const timeoutMs =
+    typeof options.timeout === "number" && Number.isFinite(options.timeout)
+      ? options.timeout
+      : HEALTHCHECK_TIMEOUT_MS;
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  if (typeof timer.unref === "function") {
+    timer.unref();
+  }
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    return response;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function performWalletProbe() {
+  try {
+    const response = await fetchWithTimeout(`${SELF_ORIGIN}/wallet/balance`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "X-IZK-UID": HEALTHCHECK_USER_ID,
+      },
+    });
+    const payload = await response.json().catch(() => null);
+    const ok = response.ok && payload && typeof payload.balance === "number";
+    return {
+      ok,
+      status: response.status,
+      balance: payload?.balance ?? null,
+      error: ok ? undefined : "invalid_payload",
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+async function performChatProbe() {
+  try {
+    const response = await fetchWithTimeout(`${SELF_ORIGIN}/chat/v1`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-IZK-HEALTHCHECK": "1",
+      },
+      body: JSON.stringify({ text: HEALTHCHECK_PROMPT }),
+    });
+    const payload = await response.json().catch(() => null);
+    const ok = response.ok && payload && typeof payload.reply === "string";
+    return {
+      ok,
+      status: response.status,
+      reply: ok ? payload.reply : null,
+      error: ok ? undefined : "invalid_reply",
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+async function performFrontendProbe() {
+  if (!PUBLIC_UI_URL) {
+    return {
+      ok: false,
+      skipped: true,
+      reason: "PUBLIC_UI_URL not configured",
+    };
+  }
+  const result = {
+    ok: false,
+    status: null,
+    version: null,
+    warnings: [],
+    url: PUBLIC_UI_URL,
+  };
+  try {
+    const response = await fetchWithTimeout(PUBLIC_UI_URL, {
+      method: "GET",
+      headers: { "Cache-Control": "no-cache" },
+    });
+    result.status = response.status;
+    result.ok = response.ok;
+  } catch (error) {
+    return {
+      ...result,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+
+  try {
+    const versionUrl = `${PUBLIC_UI_URL.replace(/\/+$/, "")}/version.json?ts=${Date.now()}`;
+    const versionResponse = await fetchWithTimeout(versionUrl, {
+      method: "GET",
+      headers: { "Cache-Control": "no-cache" },
+    });
+    if (versionResponse.ok) {
+      const payload = await versionResponse.json().catch(() => null);
+      if (payload && typeof payload === "object") {
+        result.version = payload;
+      } else {
+        result.warnings.push("version_payload_invalid");
+      }
+    } else {
+      result.warnings.push(`version_status_${versionResponse.status}`);
+    }
+  } catch (error) {
+    result.warnings.push(error instanceof Error ? error.message : String(error));
+  }
+
+  return result;
 }
 
 app.use(express.urlencoded({ extended: true }));
@@ -55,6 +198,7 @@ const WALLET_FILE = path.join(WALLET_DATA_DIR, "wallet.json");
 const DEFAULT_USER_ALLOWANCE = 100;
 const ADMIN_USER_ID = "admin";
 const ADMIN_DAILY_ALLOWANCE = 10000;
+const HEALTHCHECK_USER_ID = process.env.HEALTHCHECK_USER_ID || ADMIN_USER_ID;
 const WALLET_TRANSACTION_LIMIT = 500;
 
 const defaultProviderConfig = {
@@ -762,15 +906,67 @@ app.get("/health/ping", (_req, res) => {
       provider: telemetry.provider,
       model: telemetry.model,
       endpoint: telemetry.endpoint,
+      build_id: BUILD_ID,
+      build_timestamp: BUILD_TIMESTAMP,
+      public_bff_url: PUBLIC_BFF_URL,
+      public_ui_url: PUBLIC_UI_URL,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
     res.status(500).json({
       ok: false,
       error: error instanceof Error ? error.message : String(error),
+      build_id: BUILD_ID,
       timestamp: new Date().toISOString(),
     });
   }
+});
+
+app.get("/health/deep", async (_req, res) => {
+  const wallet = await performWalletProbe();
+  const chat = await performChatProbe();
+  const ok = wallet.ok && chat.ok;
+  res.status(ok ? 200 : 503).json({
+    ok,
+    service: "mini-bff",
+    build_id: BUILD_ID,
+    probes: {
+      wallet,
+      chat,
+    },
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get("/status/probe", async (_req, res) => {
+  const [frontend, wallet, chat] = await Promise.all([
+    performFrontendProbe(),
+    performWalletProbe(),
+    performChatProbe(),
+  ]);
+  const frontendBuildId =
+    frontend?.version && typeof frontend.version === "object"
+      ? frontend.version.build_id ?? frontend.version.buildId ?? null
+      : null;
+  const versionMismatch =
+    Boolean(frontendBuildId) && Boolean(BUILD_ID) && frontendBuildId !== BUILD_ID;
+  const playable = wallet.ok && chat.ok && frontend.ok && !versionMismatch;
+  res.status(playable ? 200 : 503).json({
+    playable,
+    service: "mini-bff",
+    build_id: BUILD_ID,
+    timestamp: new Date().toISOString(),
+    probes: {
+      frontend,
+      wallet,
+      chat,
+    },
+    version: {
+      frontend: frontend.version ?? null,
+      backend: { build_id: BUILD_ID, built_at: BUILD_TIMESTAMP },
+      mismatch: versionMismatch,
+    },
+  });
 });
 
 app.get("/api/personas", async (_req, res) => {
@@ -1275,12 +1471,18 @@ app.get("/admin/info", (_req, res) => {
     service: "mini-bff",
     version: "0.1.0",
     health_url: "/health/ping",
+    deep_health_url: "/health/deep",
+    status_probe_url: "/status/probe",
+    build_id: BUILD_ID,
+    build_timestamp: BUILD_TIMESTAMP,
+    public_bff_url: PUBLIC_BFF_URL,
+    public_ui_url: PUBLIC_UI_URL,
     provider: providerCache?.provider ?? "unknown",
   });
 });
 
 app.get("/admin/ui-alive", async (_req, res) => {
-  const baseUrl = UI_URL.replace(/\/+$/, "");
+  const baseUrl = (PUBLIC_UI_URL || UI_URL).replace(/\/+$/, "");
   const endpoint = `${baseUrl}/ui-alive.json`;
   try {
     const response = await fetch(endpoint, { method: "GET", cache: "no-store" });
@@ -1338,10 +1540,23 @@ app.post("/chat/v1", async (req, res) => {
 
   const content = rawPrompt ?? rawQuery ?? rawMessage ?? rawText ?? "";
   const trimmedContent = typeof content === "string" ? content.trim() : "";
-  if (!trimmedContent) {
+  const isHealthcheck = req.get("x-izk-healthcheck") === "1";
+  if (!trimmedContent && !isHealthcheck) {
     return res.status(422).json({
       error: "PROMPT_REQUIRED",
       message: "request body must include non-empty 'prompt', 'query', or 'text'",
+    });
+  }
+
+  if (isHealthcheck) {
+    return res.json({
+      reply: "mini-bff-healthcheck-ok",
+      meta: {
+        provider: "healthcheck",
+        model: "healthcheck",
+        endpoint: PUBLIC_BFF_URL,
+        healthcheck: true,
+      },
     });
   }
 
@@ -1382,7 +1597,6 @@ app.post("/chat/v1", async (req, res) => {
   }
 });
 
-const PORT = Number(process.env.PORT) || 4117;
 loadProviderConfig()
   .then((config) => {
     console.log(`[PROVIDER] active => ${config.provider}`);
