@@ -914,6 +914,10 @@ app.get("/api/health", (_req, res) => {
     .json({ status: "ok", service: "IZAKAYA_BFF", persona_engine: PERSONA_ENGINE_URL });
 });
 
+app.get("/api/ping", (_req, res) => {
+  res.status(200).json({ ok: true, time: Date.now() });
+});
+
 app.get("/health/ping", (_req, res) => {
   res.status(200).json({
     ok: true,
