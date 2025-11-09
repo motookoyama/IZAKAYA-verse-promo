@@ -1701,3 +1701,6 @@ loadWalletStore()
 app.listen(PORT, () => {
   console.log(`Mini BFF running on port ${PORT}`);
 });
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', time: Date.now() });
+});
