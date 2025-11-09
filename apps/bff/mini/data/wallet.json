@@ -3,19 +3,19 @@
   "users": {
     "admin": {
       "balance": 10000,
-      "resetAt": "2025-11-08",
+      "resetAt": "2025-11-09",
       "transactions": {},
-      "lastGrantAt": "2025-11-08"
+      "lastGrantAt": "2025-11-09"
     },
     "guest-t5iw21": {
       "balance": 100,
-      "resetAt": "2025-11-08",
+      "resetAt": "2025-11-09",
       "transactions": {},
-      "lastGrantAt": "2025-11-08"
+      "lastGrantAt": "2025-11-09"
     },
     "IZK_HEALTHCHECK_UI": {
       "balance": 100,
-      "resetAt": "2025-11-08",
+      "resetAt": "2025-11-09",
       "transactions": {
         "TX-20251103-KY82VI": "2025-11-03T17:18:29.587Z",
         "health-mhjem11y-uptc": "2025-11-03T17:18:29.592Z",
@@ -54,24 +54,28 @@
         "TX-20251106-1YBXS7": "2025-11-06T20:52:55.394Z",
         "health-mhnwlcdf-1tre": "2025-11-06T20:52:55.396Z",
         "TX-20251107-2697XN": "2025-11-07T08:41:55.869Z",
-        "health-mholx4te-400u": "2025-11-07T08:41:55.876Z"
+        "health-mholx4te-400u": "2025-11-07T08:41:55.876Z",
+        "TX-20251108-U8QK2L": "2025-11-08T17:59:51.765Z",
+        "health-mhqlahni-g64y": "2025-11-08T17:59:51.776Z",
+        "TX-20251108-P80BW5": "2025-11-08T18:44:30.979Z",
+        "health-mhqmvwxz-dk8j": "2025-11-08T18:44:30.985Z"
       },
-      "lastGrantAt": "2025-11-08"
+      "lastGrantAt": "2025-11-09"
     },
     "preview-ui": {
       "balance": 100,
-      "resetAt": "2025-11-08",
+      "resetAt": "2025-11-09",
       "transactions": {
         "DIAG-20251103-FVWVQQ": "2025-11-03T17:28:27.657Z",
         "diag-DIAG-20251103-FVWVQQ": "2025-11-03T17:28:27.658Z"
       },
-      "lastGrantAt": "2025-11-08"
+      "lastGrantAt": "2025-11-09"
     },
     "preview-user": {
       "balance": 100,
-      "resetAt": "2025-11-08",
+      "resetAt": "2025-11-09",
       "transactions": {},
-      "lastGrantAt": "2025-11-08"
+      "lastGrantAt": "2025-11-09"
     }
   }
 }
