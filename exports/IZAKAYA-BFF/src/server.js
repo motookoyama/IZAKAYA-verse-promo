@@ -1386,6 +1386,10 @@ app.get("/health", (_req, res) => {
   res.status(200).json({ ok: true, time: Date.now() });
 });
 
+app.get("/api/ping", (_req, res) => {
+  res.status(200).json({ ok: true, time: Date.now() });
+});
+
 const PORT = Number(process.env.PORT) || 4117;
 loadProviderConfig()
   .then((config) => {
