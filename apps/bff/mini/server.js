@@ -1574,9 +1574,10 @@ app.get("/admin/ui-alive", async (_req, res) => {
   }
 });
 
-app.get("/heartbeat", (_req, res) => {
+app.get("/heartbeat", async (_req, res) => {
   try {
-    const telemetry = getProviderTelemetry();
+    const config = await loadProviderConfig();
+    const telemetry = getProviderTelemetry(config);
     res.json({ status: "ok", ...telemetry });
   } catch (error) {
     res.status(500).json({ status: "error", error: error instanceof Error ? error.message : String(error) });
@@ -1653,7 +1654,8 @@ app.post("/chat/v1", async (req, res) => {
       userPrompt: trimmedContent,
     });
 
-    const result = await callLLM(finalPrompt);
+    const providerConfig = await loadProviderConfig();
+    const result = await callLLM(finalPrompt, providerConfig);
     res.json({
       reply: result.reply,
       meta: {
@@ -1670,6 +1672,30 @@ app.post("/chat/v1", async (req, res) => {
   } catch (error) {
     const messageText = error instanceof Error ? error.message : String(error);
     res.status(500).json({ error: messageText });
+  }
+});
+
+app.post("/llm/gateway", async (req, res) => {
+  const payload = typeof req.body === "object" && req.body !== null ? req.body : {};
+  const text = typeof payload.text === "string" ? payload.text.trim() : "";
+  if (!text) {
+    return res.status(400).json({ reply: "⚠ text is required", error: "TEXT_REQUIRED" });
+  }
+  try {
+    const providerConfig = await loadProviderConfig();
+    const result = await callLLM(text, providerConfig);
+    return res.json({
+      reply: result.reply,
+      meta: {
+        provider: result.provider,
+        model: result.model,
+        endpoint: result.endpoint,
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[LLM_GATEWAY] failed to generate response", error);
+    return res.status(500).json({ reply: `⚠ ${message}`, error: message });
   }
 });
 

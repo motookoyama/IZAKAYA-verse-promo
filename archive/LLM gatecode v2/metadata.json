@@ -1,0 +1,5 @@
+
+{
+  "name": "IZAKAYA AI Chat",
+  "description": "A minimal yet elegant chat interface to interact with Google's Gemini model, built with React, TypeScript, and Tailwind CSS. It provides a seamless, streaming conversation experience, inspired by a friendly Izakaya setting."
+}
