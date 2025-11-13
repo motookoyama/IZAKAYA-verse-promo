@@ -8,6 +8,12 @@
 - ログ/スクショの場所:
 - 次やること:
 
+## 2025-11-13 Case IZK-LLM-500 解消
+- やったこと: Cloud Run `izakaya-bff` が `/chat/v1` で即時 500 を返していた根本原因を特定し、Cloud Run サービスアカウントに「Service Usage User」「Vertex AI User」ロールを付与。加えて Cloud Run の環境変数へ `PROVIDER=GEMINI`, `GEMINI_MODEL=gemini-pro`, `GEMINI_API_KEY=***` を設定し、BFF 起動時の `PROVIDER is not set` クラッシュを解消。最新リビジョン `izakaya-bff-00017-gjb` で正常起動を確認。
+- 気づき/問題: API キー設定だけでは不十分で、IAM ロールが欠如していると GCP 認証レイヤーで外部接続が拒否される（ログに残らず 500 連発）。また環境変数未設定のままデプロイされると、コードがロギング前に落ちるため原因特定が極めて困難になる。今後の AI/人間担当は「環境変数 + IAM ロール」をセットで確認すること。
+- ログ/スクショの場所: Cloud Run リビジョン `izakaya-bff-00017-gjb` のリクエストログ（500→200 変化）。IAM 変更履歴は GCP Audit Logs。必要なら `gcloud logging read --project gen-lang-client-0676058874 --resource-type cloud_run_revision --service izakaya-bff` で参照可能。
+- 次やること: SDK ベース（@google/genai 等）への移行を検討し、サービスアカウント認証を標準化。デプロイ手順書に「IAMロール付与」と「必須ENV一覧」を追記し、CI でチェックできるよう準備する。
+
 ## 2025-11-05 Online Build Failure Postmortem（全AI周知）
 - やったこと: 公開用 Vite ビルド (`docs/`) が再生成されないまま Cloud Run / GitHub Pages にアップされ、ユーザーには白画面しか提供されていなかった。原因は `.env.production` を更新しただけで本番ビルド工程を実行せず、成果物が古いままだったため。`RUNBOOK.md` に必須手順を追記し、`scripts/check_prod_build.sh` を作成して `docs/` と `.env.production` の更新・コミット有無を自動検証する仕組みを追加。
 - 気づき/問題: 「ローカルで見えたからOK」という判断でオンライン資産の更新確認を怠った。Codex/Gemini 等リモート AI からはブラウザ表示を直接確認できないため、ビルド成果物の整合性をチェックリストに含めていなかったことが致命傷になった。
