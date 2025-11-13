@@ -1675,30 +1675,6 @@ app.post("/chat/v1", async (req, res) => {
   }
 });
 
-app.post("/llm/gateway", async (req, res) => {
-  const payload = typeof req.body === "object" && req.body !== null ? req.body : {};
-  const text = typeof payload.text === "string" ? payload.text.trim() : "";
-  if (!text) {
-    return res.status(400).json({ reply: "⚠ text is required", error: "TEXT_REQUIRED" });
-  }
-  try {
-    const providerConfig = await loadProviderConfig();
-    const result = await callLLM(text, providerConfig);
-    return res.json({
-      reply: result.reply,
-      meta: {
-        provider: result.provider,
-        model: result.model,
-        endpoint: result.endpoint,
-      },
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("[LLM_GATEWAY] failed to generate response", error);
-    return res.status(500).json({ reply: `⚠ ${message}`, error: message });
-  }
-});
-
 app.use((err, req, res, next) => {
   console.error(`[ERROR] ${req.method} ${req.originalUrl}`, err);
   if (res.headersSent) {
