@@ -1656,6 +1656,30 @@ app.post("/chat/v1", async (req, res) => {
 
     const providerConfig = await loadProviderConfig();
     const result = await callLLM(finalPrompt, providerConfig);
+    if (result?.error || !result?.reply) {
+      console.error("[CHAT] provider_error", {
+        provider: result?.provider,
+        model: result?.model,
+        endpoint: result?.endpoint,
+        status: result?.status,
+        error: result?.error || "missing_reply",
+      });
+      return res.status(200).json({
+        error: result?.error || "LLM response missing",
+        meta: {
+          provider: result?.provider ?? providerConfig.provider,
+          model: result?.model ?? providerConfig.model,
+          endpoint: result?.endpoint ?? providerConfig.endpoint ?? null,
+          status: result?.status ?? null,
+          temperature,
+          soul_core_paths: soulCoreFiles.map((file) => file.path),
+          persona_path: personaInfo?.path ?? null,
+          persona_source: personaInfo?.source ?? (personaPayload ? "request" : null),
+          persona_payload: personaData ?? null,
+        },
+      });
+    }
+
     res.json({
       reply: result.reply,
       meta: {
