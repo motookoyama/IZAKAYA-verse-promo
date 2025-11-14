@@ -11,8 +11,18 @@ function normalizeProvider(provider) {
 }
 
 function resolveConfig(overrides = {}) {
-  const provider = normalizeProvider(overrides.provider);
+  const rawProviderValue = overrides.provider ?? process.env.PROVIDER ?? "";
+  const rawProvider = typeof rawProviderValue === "string" ? rawProviderValue.trim() : "";
+  const provider = normalizeProvider(rawProvider || overrides.provider);
   if (!provider) {
+    if (rawProvider && rawProvider.toLowerCase().startsWith("http")) {
+      return {
+        provider: "custom",
+        model: overrides.model || process.env.CUSTOM_MODEL || "",
+        apiKey: overrides.apiKey || process.env.CUSTOM_API_KEY || "",
+        endpoint: rawProvider,
+      };
+    }
     throw new Error("provider is not configured");
   }
   if (!KNOWN_PROVIDERS.has(provider)) {

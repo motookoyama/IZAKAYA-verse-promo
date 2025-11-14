@@ -50,6 +50,32 @@ console.log(
   `[BOOT] mini-bff starting | build=${BUILD_ID} | port=${PORT} | self=${SELF_ORIGIN} | public=${PUBLIC_BFF_URL} | ui=${PUBLIC_UI_URL}`,
 );
 
+function logProviderEnvState() {
+  const provider = (process.env.PROVIDER || "").toUpperCase() || "(unset)";
+  const summary = {
+    PROVIDER: provider,
+    GEMINI_MODEL: process.env.GEMINI_MODEL ? "set" : "(unset)",
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY ? "set" : "(unset)",
+    GEMINI_ENDPOINT: process.env.GEMINI_ENDPOINT || "(default)",
+    OPENAI_MODEL: process.env.OPENAI_MODEL ? "set" : "(unset)",
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY ? "set" : "(unset)",
+  };
+  console.log("[ENV] provider configuration", summary);
+  if (!process.env.PROVIDER) {
+    console.warn("[ENV] PROVIDER is not set. LLM routing will fail until it is configured.");
+  }
+  if (provider === "GEMINI") {
+    if (!process.env.GEMINI_MODEL) {
+      console.warn("[ENV] GEMINI_MODEL is not defined. Using fallback value (if any).");
+    }
+    if (!process.env.GEMINI_API_KEY) {
+      console.warn("[ENV] GEMINI_API_KEY is not defined. Gemini calls will fail.");
+    }
+  }
+}
+
+logProviderEnvState();
+
 function isTestUserRequest(req) {
   return req?.get?.("x-izk-test-user") === "1";
 }
