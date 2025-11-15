@@ -5,6 +5,10 @@ import axios from "axios";
 
 const KNOWN_PROVIDERS = new Set(["openai", "gemini", "ollama", "custom"]);
 const DEFAULT_TIMEOUT_MS = Number(process.env.LLM_REQUEST_TIMEOUT_MS || 20000);
+const normalizeGeminiModel = (value) => {
+  if (!value || typeof value !== "string") return "";
+  return value.startsWith("models/") ? value : `models/${value}`;
+};
 
 function normalizeProvider(provider) {
   return (provider || process.env.PROVIDER || "").trim().toLowerCase();
@@ -44,7 +48,7 @@ function resolveConfig(overrides = {}) {
       throw new Error("OPENAI configuration incomplete (apiKey/model/endpoint required)");
     }
   } else if (provider === "gemini") {
-    baseConfig.model ||= process.env.GEMINI_MODEL || "";
+    baseConfig.model = normalizeGeminiModel(baseConfig.model || process.env.GEMINI_MODEL || "");
     baseConfig.apiKey ||= process.env.GEMINI_API_KEY || "";
     baseConfig.endpoint ||= process.env.GEMINI_ENDPOINT || "https://generativelanguage.googleapis.com/v1beta";
     if (!baseConfig.apiKey || !baseConfig.model || !baseConfig.endpoint) {
@@ -149,9 +153,15 @@ export async function callLLM(message, overrides) {
       );
       const reply = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!reply) {
+        console.error("[LLM] empty reply from Gemini", {
+          provider,
+          model,
+          endpoint: url,
+          rawResponse: response.data,
+        });
         throw new Error("Gemini response did not include candidates[0].content.parts[0].text");
       }
-      return { provider, model, endpoint: url, reply };
+      return { provider, model, endpoint: url, reply, raw: response.data };
     }
 
     // provider === "ollama" or "custom"
@@ -167,9 +177,10 @@ export async function callLLM(message, overrides) {
     const reply =
       provider === "ollama" ? response.data?.response : response.data?.reply ?? response.data?.text ?? null;
     if (!reply) {
+      console.error("[LLM] empty reply from provider", { provider, model, endpoint: url, rawResponse: response.data });
       throw new Error("LLM response did not include reply text");
     }
-    return { provider, model, endpoint: url, reply };
+    return { provider, model, endpoint: url, reply, raw: response.data };
   } catch (error) {
     const detail = formatAxiosError(error);
     console.error("[PROVIDER-AXIOS-ERROR]", {
@@ -186,6 +197,7 @@ export async function callLLM(message, overrides) {
       endpoint,
       error: detail.message,
       status: detail.status ?? 500,
+      raw: detail.rawBody,
     };
   }
 }

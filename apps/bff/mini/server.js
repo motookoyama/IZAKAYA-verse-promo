@@ -71,6 +71,8 @@ function logProviderEnvState() {
     if (!process.env.GEMINI_API_KEY) {
       console.warn("[ENV] GEMINI_API_KEY is not defined. Gemini calls will fail.");
     }
+    console.info("[ENV] GEMINI_MODEL value", process.env.GEMINI_MODEL || "(unset)");
+    console.info("[ENV] GEMINI_ENDPOINT value", process.env.GEMINI_ENDPOINT || "(default)");
   }
 }
 
@@ -1689,6 +1691,7 @@ app.post("/chat/v1", async (req, res) => {
         endpoint: result?.endpoint,
         status: result?.status,
         error: result?.error || "missing_reply",
+        raw: result?.raw ?? null,
       });
       return res.status(200).json({
         error: result?.error || "LLM response missing",
@@ -1702,6 +1705,7 @@ app.post("/chat/v1", async (req, res) => {
           persona_path: personaInfo?.path ?? null,
           persona_source: personaInfo?.source ?? (personaPayload ? "request" : null),
           persona_payload: personaData ?? null,
+          raw: result?.raw ?? null,
         },
       });
     }
