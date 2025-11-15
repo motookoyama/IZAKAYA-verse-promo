@@ -7,7 +7,16 @@ const KNOWN_PROVIDERS = new Set(["openai", "gemini", "ollama", "custom"]);
 const DEFAULT_TIMEOUT_MS = Number(process.env.LLM_REQUEST_TIMEOUT_MS || 20000);
 const normalizeGeminiModel = (value) => {
   if (!value || typeof value !== "string") return "";
-  return value.startsWith("models/") ? value : `models/${value}`;
+  let v = value.trim();
+
+  // すでに models/ がついている場合
+  if (v.startsWith("models/")) {
+    // 二重 models/ を防ぐ
+    return v.replace(/^models\/models\//, "models/");
+  }
+
+  // ついていない場合は付与
+  return `models/${v}`;
 };
 
 function normalizeProvider(provider) {
@@ -49,6 +58,8 @@ function resolveConfig(overrides = {}) {
     }
   } else if (provider === "gemini") {
     baseConfig.model = normalizeGeminiModel(baseConfig.model || process.env.GEMINI_MODEL || "");
+    // --- safety: 二重 models/ の最終チェック ---
+    baseConfig.model = baseConfig.model.replace(/^models\/models\//, "models/");
     baseConfig.apiKey ||= process.env.GEMINI_API_KEY || "";
     baseConfig.endpoint ||= process.env.GEMINI_ENDPOINT || "https://generativelanguage.googleapis.com/v1beta";
     if (!baseConfig.apiKey || !baseConfig.model || !baseConfig.endpoint) {
